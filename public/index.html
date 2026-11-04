@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="th" data-theme="buffet">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#fff7ed" />
+    <title data-i18n="page.homeTitle">เริ่มต้นใช้งาน</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="icon" type="image/png" href="/api/settings/favicon?v=1" />
+  </head>
+  <body class="min-h-screen bg-orange-50 text-slate-800">
+    <header class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+      <a href="/" class="flex items-center gap-3 font-black">
+        <img
+          data-shop-logo
+          src="/assets/images/logo.png"
+          alt=""
+          class="h-12 w-12 rounded-xl bg-white object-contain p-1"
+        />
+        <span data-shop-name data-i18n="brand.name"> บุฟเฟต์ชาบู & หม่าล่า </span>
+      </a>
+      <div
+        id="langSwitcher"
+        data-lang-switcher
+        data-i18n-skip
+        class="lang-switcher lang-switcher--inline"
+        role="group"
+        data-i18n-aria-label="language.switchAria"
+        aria-label="เปลี่ยนภาษา"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          class="lang-switcher__icon"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="9" />
+          <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+        </svg>
+        <button
+          type="button"
+          data-no-btn
+          data-lang="th"
+          class="lang-switcher__btn"
+          aria-pressed="true"
+        >
+          ไทย
+        </button>
+        <button
+          type="button"
+          data-no-btn
+          data-lang="en"
+          class="lang-switcher__btn"
+          aria-pressed="false"
+        >
+          EN
+        </button>
+      </div>
+    </header>
+    <main
+      class="mx-auto flex max-w-6xl flex-col justify-center px-4 py-8 sm:min-h-[calc(100vh-5rem)] sm:px-6 sm:py-12"
+    >
+      <section class="mb-8 text-center">
+        <img
+          data-shop-hero
+          src=""
+          alt="ภาพส่วนหัวของร้าน"
+          class="mx-auto mb-6 hidden h-44 w-full max-w-4xl rounded-3xl object-cover shadow-lg sm:h-56"
+        />
+        <p class="font-bold uppercase tracking-[0.2em] text-orange-700" data-i18n="home.kicker">
+          ระบบคิวและรับประทานอาหารในร้าน
+        </p>
+        <h1 class="mt-2 text-3xl font-black sm:text-5xl" data-i18n="home.title">ยินดีต้อนรับ</h1>
+        <p
+          data-shop-welcome
+          class="mx-auto mt-3 max-w-2xl text-slate-600"
+          data-i18n="home.description"
+        >
+          เลือกเมนูด้านล่างเพื่อเริ่มใช้บริการสำหรับลูกค้า หรือเข้าสู่ระบบสำหรับพนักงาน
+        </p>
+      </section>
+      <section class="grid gap-5 md:grid-cols-2">
+        <article class="card border border-orange-100 bg-base-100 shadow-xl">
+          <div class="card-body items-center text-center">
+            <img src="/assets/images/icon-cart.png" alt="" class="h-14 w-14" />
+            <h2 class="card-title text-2xl" data-i18n="home.customerTitle">สำหรับลูกค้า</h2>
+            <p data-i18n="home.customerDescription">
+              รับบัตรคิว แล้วรอพนักงานเรียกเพื่อเริ่มใช้บริการ
+            </p>
+            <div class="card-actions mt-3 w-full flex-col gap-2">
+              <a href="/queue.html" class="btn btn-primary w-full" data-i18n="home.customerButton">
+                รับบัตรคิว
+              </a>
+              <a
+                href="/member.html"
+                class="btn btn-outline w-full border-orange-300 text-orange-800 hover:border-orange-500 hover:bg-orange-50"
+                data-i18n="member.portalLink"
+              >
+                สมัครสมาชิก / เช็คแต้ม
+              </a>
+            </div>
+          </div>
+        </article>
+        <article class="card border border-orange-100 bg-base-100 shadow-xl">
+          <div class="card-body items-center text-center">
+            <img src="/assets/images/logo.png" alt="" class="h-14 w-14 rounded-xl object-contain" />
+            <h2 class="card-title text-2xl" data-i18n="home.staffTitle">สำหรับพนักงาน</h2>
+            <p data-i18n="home.staffDescription">
+              เข้าสู่ระบบเพื่อจัดการคิว โต๊ะ ออเดอร์ ครัว และการชำระเงิน
+            </p>
+            <div class="card-actions mt-3 w-full">
+              <a href="/login.html" class="btn btn-neutral w-full" data-i18n="home.staffButton">
+                เข้าสู่ระบบพนักงาน
+              </a>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section
+        data-shop-contact
+        class="mt-5 hidden rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600"
+      >
+        <span data-shop-phone> </span>
+        <span data-shop-contact-separator class="mx-2 hidden"> • </span>
+        <span data-shop-address> </span>
+      </section>
+    </main>
+    <script src="/js/i18n.js"></script>
+    <script src="/js/customer/shop-info.js"></script>
+    <script src="/js/brand.js"></script>
+  </body>
+</html>

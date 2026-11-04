@@ -1,0 +1,784 @@
+(() => {
+  const Admin = window.Admin;
+  if (!Admin) return;
+  const T = (key, vars) => (window.t ? window.t(key, vars) : key);
+
+  const loadingEl = document.getElementById('loyalty-loading');
+  const memberRows = document.getElementById('member-rows');
+  const promoRows = document.getElementById('promo-rows');
+  const txRows = document.getElementById('tx-rows');
+  const tierCards = document.getElementById('tier-cards');
+
+  const memberModal = document.getElementById('member-modal');
+  const memberForm = document.getElementById('member-form');
+  const promoModal = document.getElementById('promo-modal');
+  const promoForm = document.getElementById('promo-form');
+  const pointsModal = document.getElementById('points-modal');
+  const pointsAdjustForm = document.getElementById('points-adjust-form');
+
+  let currentTab = localStorage.getItem('loyaltyAdminTab') || 'members';
+  let cachedOverview = null;
+  let allLoadedMembers = [];
+  let cachedMembers = [];
+  let cachedPromos = [];
+  let cachedTransactions = [];
+  let editingMember = null;
+  let editingPromo = null;
+  let activePointsMember = null;
+  let activePointsTxList = [];
+  let memberSearchDebounceTimer = null;
+  let memberFetchSeq = 0;
+
+  function currentLocale() {
+    return localStorage.getItem('lang') === 'en' ? 'en-US' : 'th-TH';
+  }
+
+  function formatInt(n) {
+    return new Intl.NumberFormat('en-US').format(Number(n) || 0);
+  }
+
+  function formatDateTime(value) {
+    if (!value) return '—';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
+    return d.toLocaleString(currentLocale());
+  }
+
+  function displayTierName(tierCode, tierName) {
+    if (tierCode === 'MEMBER') return T('admin.members.tierNameMember');
+    return tierName || tierCode || T('admin.members.tierNameMember');
+  }
+
+  function tierBadgeHTML(tierCode, tierName, discountPercent) {
+    const styles = {
+      VIP: 'bg-purple-100 text-purple-800 border-purple-200',
+      GOLD: 'bg-amber-100 text-amber-900 border-amber-300',
+      SILVER: 'bg-slate-200 text-slate-800 border-slate-300',
+      MEMBER: 'bg-orange-50 text-orange-800 border-orange-200',
+    };
+    const cls = styles[tierCode] || styles.MEMBER;
+    const label = displayTierName(tierCode, tierName);
+    const pct =
+      Number(discountPercent) > 0
+        ? ` · ${T('admin.members.tierDiscountTag', { pct: Number(discountPercent) })}`
+        : '';
+    return `<span class="inline-flex items-center rounded-lg border px-2.5 py-1 text-xs font-medium ${cls}">${Admin.escapeHTML(label)}${Admin.escapeHTML(pct)}</span>`;
+  }
+
+  function txTypeBadgeHTML(type) {
+    const map = {
+      EARN: [T('admin.members.txTypeEarn'), 'bg-green-100 text-green-800'],
+      REDEEM: [T('admin.members.txTypeRedeem'), 'bg-orange-100 text-orange-800'],
+      BONUS: [T('admin.members.txTypeBonus'), 'bg-blue-100 text-blue-800'],
+      ADJUST: [T('admin.members.txTypeAdjust'), 'bg-slate-200 text-slate-800'],
+      REFUND: [T('admin.members.txTypeRefund'), 'bg-purple-100 text-purple-800'],
+    };
+    const [label, cls] = map[type] || [type, 'bg-slate-100 text-slate-700'];
+    return `<span class="inline-block rounded-lg px-2.5 py-1 text-xs font-medium ${cls}">${Admin.escapeHTML(label)}</span>`;
+  }
+
+  function switchTab(tab) {
+    currentTab = ['members', 'promos', 'logs'].includes(tab) ? tab : 'members';
+    localStorage.setItem('loyaltyAdminTab', currentTab);
+
+    document.querySelectorAll('#loyalty-tabs [data-tab]').forEach((btn) => {
+      const active = btn.dataset.tab === currentTab;
+      btn.setAttribute('aria-selected', String(active));
+      btn.className = active
+        ? 'rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-medium text-white'
+        : 'rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100';
+    });
+
+    document.getElementById('panel-members').classList.toggle('hidden', currentTab !== 'members');
+    document.getElementById('panel-promos').classList.toggle('hidden', currentTab !== 'promos');
+    document.getElementById('panel-logs').classList.toggle('hidden', currentTab !== 'logs');
+  }
+
+  function renderOverview(data) {
+    cachedOverview = data;
+    const s = (data && data.summary) || {};
+    const tiers = Array.isArray(data && data.tiers) ? data.tiers : [];
+
+    document.getElementById('kpi-total-members').textContent = T('admin.members.peopleCount', {
+      n: formatInt(s.totalMembers),
+    });
+    document.getElementById('kpi-tier-breakdown').textContent =
+      tiers
+        .map((t) => `${displayTierName(t.tierCode, t.tierName)}: ${formatInt(t.memberCount)}`)
+        .join(' · ') || '—';
+
+    document.getElementById('kpi-points-pool').textContent = T('admin.members.pointsCount', {
+      n: formatInt(s.totalCurrentPoints),
+    });
+    document.getElementById('kpi-points-issued').textContent = T(
+      'admin.members.pointsIssuedTotal',
+      { n: formatInt(s.totalPointsIssued) }
+    );
+
+    document.getElementById('kpi-active-promos').textContent =
+      `${formatInt(s.activePromotions)} / ${formatInt(s.totalPromotions)}`;
+    document.getElementById('kpi-redemptions').textContent = T('admin.members.redeemedTotal', {
+      n: formatInt(s.totalRedemptions),
+    });
+
+    document.getElementById('kpi-total-saved').textContent = Admin.currency(s.totalDiscountSaved);
+    document.getElementById('kpi-member-spend').textContent = T('admin.members.memberSpendTotal', {
+      amount: Admin.currency(s.totalMemberSpend),
+    });
+
+    tierCards.replaceChildren();
+    for (const tier of tiers) {
+      const card = document.createElement('article');
+      card.className = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm';
+      card.innerHTML = `
+        <div class="flex items-center justify-between gap-2">
+          ${tierBadgeHTML(tier.tierCode, tier.tierName, tier.discountPercent)}
+          <span class="text-xs font-medium text-slate-500">${Admin.escapeHTML(T('admin.members.peopleCount', { n: formatInt(tier.memberCount) }))}</span>
+        </div>
+        <dl class="mt-3 space-y-1 text-xs text-slate-600">
+          <div class="flex justify-between"><dt>${Admin.escapeHTML(T('admin.members.tierMinPointsLabel'))}</dt><dd class="font-medium text-slate-900">${Admin.escapeHTML(T('admin.members.pointsCount', { n: formatInt(tier.minPoints) }))}</dd></div>
+          <div class="flex justify-between"><dt>${Admin.escapeHTML(T('admin.members.tierDiscountLabel'))}</dt><dd class="font-medium text-orange-700">${tier.discountPercent}%</dd></div>
+          <div class="flex justify-between"><dt>${Admin.escapeHTML(T('admin.members.tierMultiplierLabel'))}</dt><dd class="font-medium text-slate-900">×${Number(tier.pointsMultiplier).toFixed(2)}</dd></div>
+        </dl>`;
+      tierCards.append(card);
+    }
+  }
+
+  function localizePrefix(prefix) {
+    const map = {
+      'นาย': T('common.prefixMr'),
+      'นาง': T('common.prefixMrs'),
+      'นางสาว': T('common.prefixMiss'),
+    };
+    return map[prefix] || prefix || '';
+  }
+
+  function formatMemberFullLabel(m) {
+    const pfx = localizePrefix(m.prefix);
+    const base = pfx ? `${pfx} ${m.fullName}`.trim() : m.fullName;
+    return m.nickname ? `${base} (${m.nickname})` : base;
+  }
+
+  function updateMemberResultCount(shownCount) {
+    const countEl = document.getElementById('member-result-count');
+    if (!countEl) return;
+    const total = Math.max(
+      shownCount,
+      Number(cachedOverview && cachedOverview.summary && cachedOverview.summary.totalMembers) ||
+        allLoadedMembers.length ||
+        shownCount
+    );
+    countEl.textContent = T('admin.members.filterShowing', { n: shownCount, total });
+  }
+
+  function renderMembers(members) {
+    cachedMembers = members;
+    memberRows.replaceChildren();
+    document.getElementById('members-empty').classList.toggle('hidden', members.length > 0);
+    updateMemberResultCount(members.length);
+
+    for (const m of members) {
+      const subParts = [m.phone];
+      if (m.age) subParts.push(T('common.ageYearsShort', { age: m.age }));
+      if (m.email) subParts.push(m.email);
+
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-slate-50/80';
+      tr.innerHTML = `
+        <td class="p-4 font-mono text-xs font-medium text-slate-600">${Admin.escapeHTML(m.memberCode)}</td>
+        <td class="p-4">
+          <p class="font-medium text-slate-900">${Admin.escapeHTML(formatMemberFullLabel(m))}</p>
+          <p class="text-xs font-normal text-slate-500">${Admin.escapeHTML(subParts.join(' · '))}</p>
+        </td>
+        <td class="p-4">${tierBadgeHTML(m.tierCode, m.tierName, m.discountPercent)}</td>
+        <td class="p-4 text-right">
+          <p class="font-semibold text-orange-700">${Admin.escapeHTML(T('admin.members.pointsCount', { n: formatInt(m.currentPoints) }))}</p>
+          <p class="text-xs font-normal text-slate-400">${Admin.escapeHTML(T('admin.members.lifetimePointsShort', { n: formatInt(m.lifetimePoints) }))}</p>
+        </td>
+        <td class="p-4 text-right">
+          <p class="font-medium text-slate-800">${Admin.currency(m.totalSpent)}</p>
+          <p class="text-xs font-normal text-slate-400">${Admin.escapeHTML(T('admin.members.visitsCount', { n: formatInt(m.visitCount) }))}</p>
+        </td>
+        <td class="p-4">
+          <span class="inline-block rounded-lg px-2.5 py-1 text-xs font-medium ${m.isActive ? 'bg-green-100 text-green-800' : 'bg-slate-200 text-slate-600'}">
+            ${Admin.escapeHTML(m.isActive ? T('admin.members.statusActive') : T('admin.members.statusSuspended'))}
+          </span>
+        </td>
+        <td class="p-4 text-right">
+          <div class="inline-flex flex-wrap justify-end gap-1.5">
+            <button type="button" data-points-member="${m.memberId}" class="rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-800 hover:bg-orange-100">
+              ${Admin.escapeHTML(T('admin.members.pointsHistoryBtn'))}
+            </button>
+            <button type="button" data-edit-member="${m.memberId}" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+              ${Admin.escapeHTML(T('admin.edit'))}
+            </button>
+            <button type="button" data-delete-member="${m.memberId}" class="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50">
+              ${Admin.escapeHTML(T('admin.delete'))}
+            </button>
+          </div>
+        </td>`;
+      memberRows.append(tr);
+    }
+  }
+
+  function renderPromotions(promos) {
+    cachedPromos = promos;
+    promoRows.replaceChildren();
+    document.getElementById('promos-empty').classList.toggle('hidden', promos.length > 0);
+
+    for (const p of promos) {
+      let discountLabel;
+      if (p.discountType === 'PERCENT') {
+        discountLabel = p.maxDiscount
+          ? T('admin.members.discountPercentMax', {
+              pct: p.discountValue,
+              max: Admin.currency(p.maxDiscount),
+            })
+          : T('admin.members.discountPercent', { pct: p.discountValue });
+      } else {
+        discountLabel = T('admin.members.discountFixed', {
+          amount: Admin.currency(p.discountValue),
+        });
+      }
+
+      const pointsCostHtml =
+        p.pointsCost > 0
+          ? Admin.escapeHTML(T('admin.members.pointsCount', { n: formatInt(p.pointsCost) }))
+          : `<span class="text-emerald-700">${Admin.escapeHTML(T('admin.members.freeZeroPoints'))}</span>`;
+
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-slate-50/80';
+      tr.innerHTML = `
+        <td class="p-4">
+          <span class="rounded-lg bg-slate-900 px-2.5 py-1 font-mono text-xs font-medium text-white">${Admin.escapeHTML(p.promoCode)}</span>
+        </td>
+        <td class="p-4">
+          <p class="font-medium text-slate-900">${Admin.escapeHTML(p.title)}</p>
+          ${p.description ? `<p class="mt-0.5 text-xs font-normal text-slate-500">${Admin.escapeHTML(p.description)}</p>` : ''}
+        </td>
+        <td class="p-4 font-medium text-orange-700">${Admin.escapeHTML(discountLabel)}</td>
+        <td class="p-4 text-right font-medium">${pointsCostHtml}</td>
+        <td class="p-4 text-right text-slate-600">${p.minSpend > 0 ? Admin.currency(p.minSpend) : Admin.escapeHTML(T('admin.members.noMinSpend'))}</td>
+        <td class="p-4 text-right">
+          <p class="font-medium">${Admin.escapeHTML(T('admin.members.timesCount', { n: formatInt(p.usageCount) }))}</p>
+          <p class="text-xs text-slate-400">${Admin.currency(p.totalDiscountGiven)}</p>
+        </td>
+        <td class="p-4">
+          <span class="inline-block rounded-lg px-2.5 py-1 text-xs font-medium ${p.isActive ? 'bg-green-100 text-green-800' : 'bg-slate-200 text-slate-600'}">
+            ${Admin.escapeHTML(p.isActive ? T('admin.members.promoActive') : T('admin.members.promoInactive'))}
+          </span>
+        </td>
+        <td class="p-4 text-right">
+          <div class="inline-flex flex-wrap justify-end gap-1.5">
+            <button type="button" data-edit-promo="${p.promotionId}" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+              ${Admin.escapeHTML(T('admin.edit'))}
+            </button>
+            <button type="button" data-delete-promo="${p.promotionId}" class="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50">
+              ${Admin.escapeHTML(T('admin.delete'))}
+            </button>
+          </div>
+        </td>`;
+      promoRows.append(tr);
+    }
+  }
+
+  function renderTransactions(transactions) {
+    cachedTransactions = transactions;
+    txRows.replaceChildren();
+    document.getElementById('logs-empty').classList.toggle('hidden', transactions.length > 0);
+
+    for (const tx of transactions) {
+      const deltaText =
+        tx.pointsDelta > 0 ? `+${formatInt(tx.pointsDelta)}` : formatInt(tx.pointsDelta);
+      const deltaClass =
+        tx.pointsDelta > 0
+          ? 'text-green-700'
+          : tx.pointsDelta < 0
+            ? 'text-red-700'
+            : 'text-slate-600';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="p-4 text-xs text-slate-500">${Admin.escapeHTML(formatDateTime(tx.createdAt))}</td>
+        <td class="p-4">
+          <p class="font-medium text-slate-900">${Admin.escapeHTML(tx.memberName)}</p>
+          <p class="text-xs font-normal text-slate-500">${Admin.escapeHTML(tx.memberCode)} · ${Admin.escapeHTML(tx.memberPhone)}</p>
+        </td>
+        <td class="p-4">${txTypeBadgeHTML(tx.transactionType)}</td>
+        <td class="p-4 text-right font-semibold ${deltaClass}">${Admin.escapeHTML(String(deltaText))}</td>
+        <td class="p-4 text-right font-medium">${tx.discountAmount > 0 ? `-${Admin.currency(tx.discountAmount)}` : '—'}</td>
+        <td class="p-4 text-xs text-slate-600">
+          ${tx.promoCode ? `<span class="mr-1 rounded bg-slate-200 px-1.5 py-0.5 font-mono font-medium text-slate-800">${Admin.escapeHTML(tx.promoCode)}</span>` : ''}
+          ${Admin.escapeHTML(tx.note || '—')}
+        </td>
+        <td class="p-4 text-xs font-normal text-slate-600">${Admin.escapeHTML(tx.createdBy || '—')}</td>`;
+      txRows.append(tr);
+    }
+  }
+
+  function applyClientMemberFilter() {
+    const query = document.getElementById('member-search-input').value.trim().toLocaleLowerCase();
+    const digits = query.replace(/[^\d]/g, '');
+    const tierCode = document.getElementById('member-tier-filter').value;
+
+    const filtered = allLoadedMembers.filter((m) => {
+      if (tierCode && String(m.tierCode || '').toUpperCase() !== tierCode) return false;
+      if (!query) return true;
+      const haystack =
+        `${m.fullName || ''} ${m.nickname || ''} ${m.memberCode || ''} ${m.email || ''}`.toLocaleLowerCase();
+      if (haystack.includes(query)) return true;
+      if (digits && String(m.phone || '').includes(digits)) return true;
+      return false;
+    });
+    renderMembers(filtered);
+  }
+
+  async function loadMembersOnly() {
+    const seq = ++memberFetchSeq;
+    const search = document.getElementById('member-search-input').value.trim();
+    const tierCode = document.getElementById('member-tier-filter').value;
+    const memberQuery = new URLSearchParams();
+    if (search) memberQuery.set('search', search);
+    if (tierCode) memberQuery.set('tierCode', tierCode);
+
+    try {
+      const membersRes = await Admin.api(`/api/members?${memberQuery.toString()}`);
+      if (seq !== memberFetchSeq) return;
+      const list = Array.isArray(membersRes.data) ? membersRes.data : [];
+      if (!search && !tierCode) {
+        allLoadedMembers = list;
+      }
+      renderMembers(list);
+    } catch (error) {
+      if (seq !== memberFetchSeq) return;
+      Admin.message(error.message || T('admin.members.loadFailed'), true);
+    }
+  }
+
+  async function loadAllData() {
+    const seq = ++memberFetchSeq;
+    const search = document.getElementById('member-search-input').value.trim();
+    const tierCode = document.getElementById('member-tier-filter').value;
+    const memberQuery = new URLSearchParams();
+    if (search) memberQuery.set('search', search);
+    if (tierCode) memberQuery.set('tierCode', tierCode);
+
+    try {
+      const [overviewRes, membersRes, promosRes, txRes] = await Promise.all([
+        Admin.api('/api/members/overview'),
+        Admin.api(`/api/members?${memberQuery.toString()}`),
+        Admin.api('/api/members/promotions'),
+        Admin.api('/api/members/transactions?limit=50'),
+      ]);
+      if (seq !== memberFetchSeq) return;
+      const list = Array.isArray(membersRes.data) ? membersRes.data : [];
+      if (!search && !tierCode) {
+        allLoadedMembers = list;
+      } else {
+        Admin.api('/api/members')
+          .then((fullRes) => {
+            if (Array.isArray(fullRes.data)) allLoadedMembers = fullRes.data;
+          })
+          .catch(() => {});
+      }
+      renderOverview(overviewRes.data || {});
+      renderMembers(list);
+      renderPromotions(Array.isArray(promosRes.data) ? promosRes.data : []);
+      renderTransactions(Array.isArray(txRes.data) ? txRes.data : []);
+    } catch (error) {
+      Admin.message(error.message || T('admin.members.loadFailed'), true);
+    } finally {
+      loadingEl.classList.add('hidden');
+    }
+  }
+
+  function updateModalTitles() {
+    document.getElementById('member-modal-title').textContent = editingMember
+      ? T('admin.members.editMemberTitle')
+      : T('admin.members.newMemberTitle');
+    document.getElementById('promo-modal-title').textContent = editingPromo
+      ? T('admin.members.editPromoTitle')
+      : T('admin.members.newPromoTitle');
+  }
+
+  function openMemberModal(member = null) {
+    editingMember = member;
+    memberForm.reset();
+    memberForm.elements.memberId.value = member ? member.memberId : '';
+    updateModalTitles();
+    document
+      .getElementById('member-initial-points-wrap')
+      .classList.toggle('hidden', Boolean(member));
+    const statusWrap = document.getElementById('member-status-wrap');
+    statusWrap.classList.toggle('hidden', !member);
+    statusWrap.classList.toggle('flex', Boolean(member));
+
+    if (member) {
+      memberForm.elements.prefix.value = member.prefix || '';
+      memberForm.elements.fullName.value = member.fullName || '';
+      memberForm.elements.nickname.value = member.nickname || '';
+      memberForm.elements.age.value = member.age ?? '';
+      memberForm.elements.phone.value = member.phone || '';
+      memberForm.elements.email.value = member.email || '';
+      memberForm.elements.isActive.checked = Boolean(member.isActive);
+    }
+    memberModal.classList.replace('hidden', 'flex');
+  }
+
+  function closeMemberModal() {
+    editingMember = null;
+    memberModal.classList.replace('flex', 'hidden');
+  }
+
+  function openPromoModal(promo = null) {
+    editingPromo = promo;
+    promoForm.reset();
+    promoForm.elements.promotionId.value = promo ? promo.promotionId : '';
+    updateModalTitles();
+    promoForm.elements.isActive.checked = promo ? Boolean(promo.isActive) : true;
+
+    if (promo) {
+      promoForm.elements.promoCode.value = promo.promoCode || '';
+      promoForm.elements.pointsCost.value = promo.pointsCost ?? 0;
+      promoForm.elements.title.value = promo.title || '';
+      promoForm.elements.description.value = promo.description || '';
+      promoForm.elements.discountType.value = promo.discountType || 'FIXED';
+      promoForm.elements.discountValue.value = promo.discountValue ?? '';
+      promoForm.elements.minSpend.value = promo.minSpend ?? 0;
+      promoForm.elements.maxDiscount.value = promo.maxDiscount ?? '';
+    }
+    promoModal.classList.replace('hidden', 'flex');
+  }
+
+  function closePromoModal() {
+    editingPromo = null;
+    promoModal.classList.replace('flex', 'hidden');
+  }
+
+  function renderPointsModalHeader(member) {
+    document.getElementById('points-modal-code').textContent =
+      `${member.memberCode} · ${displayTierName(member.tierCode, member.tierName)}`;
+    document.getElementById('points-modal-name').textContent = member.fullName;
+    document.getElementById('points-modal-meta').textContent = T('admin.members.pointsModalMeta', {
+      phone: member.phone,
+      current: formatInt(member.currentPoints),
+      lifetime: formatInt(member.lifetimePoints),
+    });
+  }
+
+  function renderMemberTxRows(list) {
+    const tbody = document.getElementById('member-tx-rows');
+    tbody.replaceChildren();
+    if (list.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">${Admin.escapeHTML(T('admin.members.emptyMemberPoints'))}</td></tr>`;
+      return;
+    }
+    for (const tx of list) {
+      const deltaText =
+        tx.pointsDelta > 0 ? `+${formatInt(tx.pointsDelta)}` : formatInt(tx.pointsDelta);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="p-3 text-slate-500">${Admin.escapeHTML(formatDateTime(tx.createdAt))}</td>
+        <td class="p-3">${txTypeBadgeHTML(tx.transactionType)}</td>
+        <td class="p-3 text-right font-medium ${tx.pointsDelta >= 0 ? 'text-green-700' : 'text-red-700'}">${Admin.escapeHTML(String(deltaText))}</td>
+        <td class="p-3 text-right">${tx.discountAmount > 0 ? `-${Admin.currency(tx.discountAmount)}` : '—'}</td>
+        <td class="p-3 text-slate-600">${Admin.escapeHTML(tx.note || '—')}</td>`;
+      tbody.append(tr);
+    }
+  }
+
+  async function openPointsModal(member) {
+    activePointsMember = member;
+    activePointsTxList = [];
+    pointsAdjustForm.reset();
+    pointsAdjustForm.elements.memberId.value = member.memberId;
+    renderPointsModalHeader(member);
+
+    const tbody = document.getElementById('member-tx-rows');
+    tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">${Admin.escapeHTML(T('common.loading'))}</td></tr>`;
+    pointsModal.classList.replace('hidden', 'flex');
+
+    try {
+      const res = await Admin.api(
+        `/api/members/transactions?memberId=${encodeURIComponent(member.memberId)}&limit=30`
+      );
+      activePointsTxList = Array.isArray(res.data) ? res.data : [];
+      renderMemberTxRows(activePointsTxList);
+    } catch (error) {
+      tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-700">${Admin.escapeHTML(error.message)}</td></tr>`;
+    }
+  }
+
+  function closePointsModal() {
+    activePointsMember = null;
+    activePointsTxList = [];
+    pointsModal.classList.replace('flex', 'hidden');
+  }
+
+  document.getElementById('loyalty-tabs').addEventListener('click', (event) => {
+    const btn = event.target.closest('[data-tab]');
+    if (btn) switchTab(btn.dataset.tab);
+  });
+
+  document
+    .getElementById('add-member-button')
+    .addEventListener('click', () => openMemberModal(null));
+  document.getElementById('add-promo-button').addEventListener('click', () => openPromoModal(null));
+
+  document.querySelector('[data-close-member-modal]').addEventListener('click', closeMemberModal);
+  document.querySelector('[data-close-promo-modal]').addEventListener('click', closePromoModal);
+  document.querySelector('[data-close-points-modal]').addEventListener('click', closePointsModal);
+
+  [memberModal, promoModal, pointsModal].forEach((modal) => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.replace('flex', 'hidden');
+    });
+  });
+
+  document.getElementById('member-filter-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    loadMembersOnly();
+  });
+
+  document.getElementById('member-tier-filter').addEventListener('change', () => {
+    if (allLoadedMembers.length > 0) applyClientMemberFilter();
+    loadMembersOnly();
+  });
+
+  document.getElementById('member-search-input').addEventListener('input', () => {
+    if (allLoadedMembers.length > 0) applyClientMemberFilter();
+    window.clearTimeout(memberSearchDebounceTimer);
+    memberSearchDebounceTimer = window.setTimeout(() => {
+      loadMembersOnly();
+    }, 180);
+  });
+
+  document.getElementById('member-reset-btn').addEventListener('click', () => {
+    window.clearTimeout(memberSearchDebounceTimer);
+    document.getElementById('member-search-input').value = '';
+    document.getElementById('member-tier-filter').value = '';
+    if (allLoadedMembers.length > 0) applyClientMemberFilter();
+    loadAllData();
+  });
+
+  memberForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const id = memberForm.elements.memberId.value;
+    const ageVal = memberForm.elements.age.value.trim();
+    const payload = {
+      prefix: memberForm.elements.prefix.value.trim(),
+      fullName: memberForm.elements.fullName.value.trim(),
+      nickname: memberForm.elements.nickname.value.trim(),
+      age: ageVal === '' ? null : Number.parseInt(ageVal, 10),
+      phone: memberForm.elements.phone.value.trim(),
+      email: memberForm.elements.email.value.trim(),
+    };
+    if (id) {
+      payload.isActive = memberForm.elements.isActive.checked;
+    } else {
+      payload.initialPoints = Number(memberForm.elements.initialPoints.value) || 0;
+    }
+
+    try {
+      await Admin.api(id ? `/api/members/${encodeURIComponent(id)}` : '/api/members', {
+        method: id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      closeMemberModal();
+      Admin.message(T('admin.members.memberSaved'));
+      await loadAllData();
+    } catch (error) {
+      Admin.message(error.message || T('admin.members.memberSaveFailed'), true);
+    }
+  });
+
+  promoForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (promoForm.dataset.saving === 'true') return;
+
+    const id = promoForm.elements.promotionId.value;
+    const maxVal = promoForm.elements.maxDiscount.value.trim();
+    const payload = {
+      promoCode: promoForm.elements.promoCode.value.trim().toUpperCase(),
+      pointsCost: Number(promoForm.elements.pointsCost.value) || 0,
+      title: promoForm.elements.title.value.trim(),
+      description: promoForm.elements.description.value.trim(),
+      discountType: promoForm.elements.discountType.value,
+      discountValue: Number(promoForm.elements.discountValue.value),
+      minSpend: Number(promoForm.elements.minSpend.value) || 0,
+      maxDiscount: maxVal === '' ? null : Number(maxVal),
+      isActive: promoForm.elements.isActive.checked,
+    };
+
+    promoForm.dataset.saving = 'true';
+    const submitButton = promoForm.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+
+    try {
+      await Admin.api(
+        id ? `/api/members/promotions/${encodeURIComponent(id)}` : '/api/members/promotions',
+        {
+          method: id ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      );
+      closePromoModal();
+      switchTab('promos');
+      Admin.message(T('admin.members.promoSaved'));
+      await loadAllData();
+    } catch (error) {
+      Admin.message(error.message || T('admin.members.promoSaveFailed'), true);
+    } finally {
+      promoForm.dataset.saving = 'false';
+      if (submitButton) submitButton.disabled = false;
+    }
+  });
+
+  pointsAdjustForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const memberId = pointsAdjustForm.elements.memberId.value;
+    const pointsDelta = Number.parseInt(pointsAdjustForm.elements.pointsDelta.value, 10);
+    const note = pointsAdjustForm.elements.note.value.trim();
+
+    try {
+      const res = await Admin.api(`/api/members/${encodeURIComponent(memberId)}/points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pointsDelta, note }),
+      });
+      Admin.message(T('admin.members.pointsAdjusted'));
+      await loadAllData();
+      if (res.data) {
+        await openPointsModal(res.data);
+      }
+    } catch (error) {
+      Admin.message(error.message || T('admin.members.pointsAdjustFailed'), true);
+    }
+  });
+
+  memberRows.addEventListener('click', async (event) => {
+    const pointsBtn = event.target.closest('[data-points-member]');
+    if (pointsBtn) {
+      const m = cachedMembers.find(
+        (item) => String(item.memberId) === pointsBtn.dataset.pointsMember
+      );
+      if (m) openPointsModal(m);
+      return;
+    }
+
+    const editBtn = event.target.closest('[data-edit-member]');
+    if (editBtn) {
+      const m = cachedMembers.find((item) => String(item.memberId) === editBtn.dataset.editMember);
+      if (m) openMemberModal(m);
+      return;
+    }
+
+    const delBtn = event.target.closest('[data-delete-member]');
+    if (delBtn) {
+      const m = cachedMembers.find((item) => String(item.memberId) === delBtn.dataset.deleteMember);
+      if (!m) return;
+      const ok = await Admin.confirm(
+        T('admin.members.confirmDeleteMemberMsg', { name: m.fullName, phone: m.phone }),
+        {
+          title: T('admin.members.confirmDeleteMemberTitle'),
+          okText: T('admin.members.confirmDeleteMemberOk'),
+          danger: true,
+        }
+      );
+      if (!ok) return;
+      try {
+        await Admin.api(`/api/members/${encodeURIComponent(m.memberId)}`, { method: 'DELETE' });
+        Admin.message(T('admin.members.memberDeleted'));
+        await loadAllData();
+      } catch (error) {
+        Admin.message(error.message || T('admin.members.memberDeleteFailed'), true);
+      }
+    }
+  });
+
+  promoRows.addEventListener('click', async (event) => {
+    const editBtn = event.target.closest('[data-edit-promo]');
+    if (editBtn) {
+      const p = cachedPromos.find((item) => String(item.promotionId) === editBtn.dataset.editPromo);
+      if (p) openPromoModal(p);
+      return;
+    }
+
+    const delBtn = event.target.closest('[data-delete-promo]');
+    if (delBtn) {
+      const p = cachedPromos.find(
+        (item) => String(item.promotionId) === delBtn.dataset.deletePromo
+      );
+      if (!p) return;
+      const ok = await Admin.confirm(
+        T('admin.members.confirmDeletePromoMsg', { code: p.promoCode, title: p.title }),
+        {
+          title: T('admin.members.confirmDeletePromoTitle'),
+          okText: T('admin.members.confirmDeletePromoOk'),
+          danger: true,
+        }
+      );
+      if (!ok) return;
+      try {
+        await Admin.api(`/api/members/promotions/${encodeURIComponent(p.promotionId)}`, {
+          method: 'DELETE',
+        });
+        Admin.message(T('admin.members.promoDeleted'));
+        await loadAllData();
+      } catch (error) {
+        Admin.message(error.message || T('admin.members.promoDeleteFailed'), true);
+      }
+    }
+  });
+
+  switchTab(currentTab);
+  updateModalTitles();
+
+  window.addEventListener('languageChanged', () => {
+    updateModalTitles();
+    if (cachedOverview) renderOverview(cachedOverview);
+    renderMembers(cachedMembers);
+    renderPromotions(cachedPromos);
+    renderTransactions(cachedTransactions);
+    if (activePointsMember && !pointsModal.classList.contains('hidden')) {
+      renderPointsModalHeader(activePointsMember);
+      renderMemberTxRows(activePointsTxList);
+    }
+  });
+
+  async function downloadMemberExport(format) {
+    const url = `/api/members/export?format=${encodeURIComponent(format)}`;
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${Admin.token}` } });
+    if (!response.ok) {
+      let message = T('admin.members.exportFailed');
+      try {
+        const payload = await response.json();
+        message = payload.message || message;
+      } catch {}
+      throw new Error(message);
+    }
+    const blob = await response.blob();
+    const link = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 10);
+    link.href = URL.createObjectURL(blob);
+    link.download = `members-${stamp}.${format === 'csv' ? 'csv' : 'xlsx'}`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  async function onExportMembers(format) {
+    try {
+      await downloadMemberExport(format);
+    } catch (error) {
+      Admin.message(error.message || T('admin.members.exportFailed'), true);
+    }
+  }
+
+  const exportCsvButton = document.getElementById('export-members-csv');
+  const exportExcelButton = document.getElementById('export-members-excel');
+  if (exportCsvButton) exportCsvButton.addEventListener('click', () => onExportMembers('csv'));
+  if (exportExcelButton) exportExcelButton.addEventListener('click', () => onExportMembers('xlsx'));
+
+  loadAllData();
+})();

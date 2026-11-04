@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="th" data-theme="buffet">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title data-i18n="page.adminCheckoutTitle">เช็คบิลและรับชำระ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="icon" type="image/png" href="/api/settings/favicon?v=1" />
+  </head>
+  <body class="min-h-screen bg-orange-50 text-slate-800">
+    <div class="min-h-screen lg:flex">
+      <aside id="admin-sidebar"></aside>
+      <main class="min-w-0 flex-1 px-4 pt-20 pb-6 sm:px-7 lg:px-9">
+        <header class="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p
+              class="font-bold uppercase tracking-widest text-orange-600"
+              data-i18n="admin.payment"
+            >
+              การชำระเงิน
+            </p>
+            <h1 class="mt-1 text-3xl font-black" data-i18n="admin.checkout.title">
+              เช็คบิลสำหรับพนักงาน
+            </h1>
+          </div>
+          <div
+            id="checkout-view-switcher"
+            class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1"
+            aria-label="View"
+          >
+            <button
+              type="button"
+              data-no-btn
+              data-checkout-view="table"
+              class="min-h-10 rounded-lg px-4 py-2 text-sm font-bold transition"
+              data-i18n="admin.checkout.viewTable"
+            >
+              ตาราง
+            </button>
+            <button
+              type="button"
+              data-no-btn
+              data-checkout-view="cards"
+              class="min-h-10 rounded-lg px-4 py-2 text-sm font-bold transition"
+              data-i18n="admin.checkout.viewCards"
+            >
+              การ์ด
+            </button>
+          </div>
+        </header>
+        <p id="page-message" class="mb-4 hidden rounded-xl p-4" role="status"></p>
+        <div
+          id="session-cards"
+          class="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3"
+          aria-live="polite"
+        ></div>
+        <section
+          id="session-table-wrap"
+          class="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+        >
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[760px] text-left">
+              <thead class="bg-slate-50 text-sm text-slate-500">
+                <tr>
+                  <th class="p-4" data-i18n="admin.checkout.colTable">โต๊ะ</th>
+                  <th class="p-4" data-i18n="admin.checkout.colItems">รายการอาหาร</th>
+                  <th class="p-4" data-i18n="admin.checkout.colTimeLeft">เวลาคงเหลือ</th>
+                  <th class="p-4 text-right" data-i18n="admin.checkout.colTotal">ยอดสุทธิ</th>
+                  <th class="p-4 text-right" data-i18n="admin.checkout.colAction">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="session-rows" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </section>
+        <p
+          id="sessions-empty"
+          class="hidden rounded-xl bg-white p-8 text-center font-semibold text-slate-500"
+          data-i18n="admin.checkout.noSessions"
+        >
+          ไม่มีรอบรับประทานที่รอชำระ
+        </p>
+        <div
+          id="sessions-loading"
+          class="flex min-h-24 items-center justify-center gap-3 text-slate-500"
+          role="status"
+        >
+          <span
+            class="h-6 w-6 animate-spin rounded-full border-4 border-orange-100 border-t-orange-600"
+          >
+          </span>
+          <span data-i18n="admin.checkout.loading"> กำลังโหลดรายการรอชำระ... </span>
+        </div>
+      </main>
+    </div>
+    <div
+      id="payment-modal"
+      class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-3 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="payment-modal-title"
+    >
+      <section
+        class="relative max-h-full w-full max-w-xl overflow-y-auto rounded-xl bg-white p-5 shadow-2xl sm:p-7"
+      >
+        <button
+          id="close-payment-modal"
+          type="button"
+          data-no-btn
+          class="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-slate-900"
+          data-i18n-aria-label="common.close"
+          aria-label="ปิด"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            class="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.25"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+        <div class="receipt-print">
+          <div class="text-center">
+            <h2
+              id="payment-modal-title"
+              class="text-xl font-semibold text-slate-900"
+              data-i18n="admin.checkout.paymentTitle"
+            >
+              รายการชำระเงิน
+            </h2>
+            <p id="receipt-session" class="mt-1 text-sm font-normal text-slate-600"></p>
+            <p id="receipt-time" class="text-xs font-normal text-slate-500"></p>
+          </div>
+          <div class="my-4 border-t border-dashed border-slate-300"></div>
+          <h3 class="text-sm font-medium text-slate-800" data-i18n="admin.checkout.foodItems">
+            รายการอาหาร
+          </h3>
+          <div id="receipt-items" class="my-3 space-y-2 text-sm"></div>
+          <p
+            id="receipt-empty"
+            class="hidden py-3 text-center text-sm font-normal text-slate-500"
+            data-i18n="admin.checkout.noItems"
+          >
+            ไม่มีรายการอาหาร
+          </p>
+          <dl class="space-y-2 border-t border-slate-100 pt-3 text-sm">
+            <div class="flex justify-between">
+              <dt class="text-slate-600" data-i18n="checkout.subtotal">ยอดอาหาร</dt>
+              <dd id="bill-subtotal" class="font-medium tabular-nums text-slate-800"></dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="text-slate-600" data-bill-service-label data-i18n="checkout.service">
+                ค่าบริการ
+              </dt>
+              <dd id="bill-service" class="font-medium tabular-nums text-slate-800"></dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="text-slate-600" data-bill-vat-label data-i18n="checkout.vat">VAT</dt>
+              <dd id="bill-vat" class="font-medium tabular-nums text-slate-800"></dd>
+            </div>
+            <div id="receipt-member-row" class="hidden flex justify-between text-xs text-slate-600">
+              <dt data-i18n="admin.checkout.receiptMember">สมาชิก</dt>
+              <dd id="receipt-member-info" class="text-right font-medium text-slate-800"></dd>
+            </div>
+            <div id="bill-discount-row" class="hidden flex justify-between text-emerald-700">
+              <dt id="bill-discount-label" data-i18n="checkout.discount">ส่วนลด</dt>
+              <dd id="bill-discount" class="font-medium tabular-nums"></dd>
+            </div>
+            <div class="flex justify-between border-t pt-3 text-lg font-semibold">
+              <dt class="text-slate-900" data-i18n="checkout.grandTotal">ยอดสุทธิ</dt>
+              <dd id="bill-total" class="tabular-nums text-orange-700"></dd>
+            </div>
+            <div id="receipt-cash-row" class="hidden flex justify-between text-slate-600">
+              <dt data-i18n="admin.checkout.receiptCashReceived">รับเงินสด</dt>
+              <dd id="receipt-cash" class="tabular-nums"></dd>
+            </div>
+            <div
+              id="receipt-change-row"
+              class="hidden flex justify-between font-medium text-slate-800"
+            >
+              <dt data-i18n="admin.checkout.receiptChange">เงินทอน</dt>
+              <dd id="receipt-change" class="tabular-nums"></dd>
+            </div>
+          </dl>
+        </div>
+        <p
+          id="receipt-paid"
+          class="mt-4 hidden rounded-lg bg-green-100 p-3 text-center font-medium text-green-800"
+          role="status"
+        ></p>
+        <p
+          id="payment-error"
+          class="mt-4 hidden rounded-lg bg-red-100 p-3 text-sm font-medium text-red-800"
+          role="alert"
+        ></p>
+        <section
+          id="loyalty-panel"
+          class="mt-4 rounded-xl border border-orange-200 bg-orange-50/70 p-4 print:hidden"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h3
+              class="text-sm font-semibold text-slate-900"
+              data-i18n="admin.checkout.loyaltyTitle"
+            >
+              สมาชิก & คูปองส่วนลด
+            </h3>
+            <span
+              id="loyalty-active-badge"
+              class="hidden rounded-lg bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800"
+            ></span>
+          </div>
+          <div class="mt-2.5 flex gap-2">
+            <input
+              id="loyalty-phone-input"
+              type="search"
+              class="input input-bordered input-sm flex-1 bg-white text-sm"
+              placeholder="ค้นหาด้วยชื่อ เบอร์โทร หรือรหัสสมาชิก..."
+              data-i18n-placeholder="admin.checkout.loyaltyPhonePlaceholder"
+            />
+            <button
+              id="loyalty-search-btn"
+              type="button"
+              class="btn btn-sm bg-orange-600 font-medium text-white hover:bg-orange-700"
+              data-i18n="admin.checkout.loyaltySearchBtn"
+            >
+              ค้นหา
+            </button>
+          </div>
+          <p id="loyalty-status-msg" class="mt-2 hidden text-xs font-medium"></p>
+          <div id="loyalty-candidates" class="mt-2 hidden flex-wrap gap-1.5"></div>
+
+          <div
+            id="loyalty-member-box"
+            class="mt-3 hidden space-y-2.5 rounded-lg border border-orange-200 bg-white p-3 text-xs"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p id="loyalty-member-name" class="text-sm font-semibold text-slate-900"></p>
+                <p id="loyalty-member-meta" class="font-normal text-slate-500"></p>
+              </div>
+              <span
+                id="loyalty-member-points"
+                class="rounded-lg bg-orange-100 px-2.5 py-1 font-semibold text-orange-800"
+              ></span>
+            </div>
+            <div>
+              <label
+                for="loyalty-benefit-select"
+                class="block font-medium text-slate-700"
+                data-i18n="admin.checkout.loyaltyBenefitLabel"
+                >เลือกสิทธิ์ส่วนลด / คูปอง:</label
+              >
+              <select
+                id="loyalty-benefit-select"
+                class="select select-bordered select-sm mt-1 w-full bg-white text-xs"
+              ></select>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button
+                id="loyalty-apply-btn"
+                type="button"
+                class="btn btn-sm flex-1 bg-emerald-700 font-medium text-white hover:bg-emerald-800"
+                data-i18n="admin.checkout.loyaltyApplyBtn"
+              >
+                ใช้สิทธิ์
+              </button>
+              <button
+                id="loyalty-clear-btn"
+                type="button"
+                class="btn btn-outline btn-sm hidden font-medium text-red-700"
+                data-i18n="admin.checkout.loyaltyClearBtn"
+              >
+                ยกเลิกสิทธิ์
+              </button>
+            </div>
+          </div>
+
+          <div
+            id="loyalty-quick-register"
+            class="mt-3 hidden space-y-2 rounded-lg border border-slate-200 bg-white p-3 text-xs"
+          >
+            <p class="font-medium text-slate-800" data-i18n="admin.checkout.loyaltyQuickRegTitle">
+              ยังไม่พบสมาชิก · สมัครสมาชิกด่วน
+            </p>
+            <div class="grid gap-2 sm:grid-cols-2">
+              <input
+                id="loyalty-register-name"
+                class="input input-bordered input-sm w-full text-xs"
+                placeholder="ชื่อลูกค้า"
+                data-i18n-placeholder="admin.checkout.loyaltyCustomerNamePlaceholder"
+              />
+              <input
+                id="loyalty-register-phone"
+                type="tel"
+                class="input input-bordered input-sm w-full text-xs"
+                placeholder="เบอร์โทรศัพท์ 9-15 หลัก"
+                data-i18n-placeholder="admin.checkout.loyaltyRegisterPhonePlaceholder"
+              />
+            </div>
+            <button
+              id="loyalty-register-btn"
+              type="button"
+              class="btn btn-sm w-full bg-slate-900 font-medium text-white hover:bg-slate-800"
+              data-i18n="admin.checkout.loyaltyQuickRegBtn"
+            >
+              สมัครและผูกบิล
+            </button>
+          </div>
+        </section>
+        <form id="payment-form" class="mt-5 border-t border-slate-100 pt-5 print:hidden">
+          <label class="block font-medium text-slate-700">
+            <span data-i18n="admin.checkout.method"> วิธีชำระเงิน </span>
+            <select name="method" class="select select-bordered mt-2 w-full">
+              <option value="cash" data-i18n="admin.checkout.cash">เงินสด</option>
+              <option value="qr_payment" data-i18n="admin.checkout.qrPayment">QR Payment</option>
+            </select>
+          </label>
+          <label id="cash-received-field" class="mt-4 block font-bold">
+            <span data-i18n="admin.checkout.cashReceived"> จำนวนเงินที่รับ (บาท) </span>
+            <input
+              id="cash-received"
+              name="receivedAmount"
+              type="number"
+              min="0"
+              step="0.01"
+              data-no-stepper
+              inputmode="decimal"
+              required
+              class="input input-bordered mt-2 w-full text-lg"
+            />
+          </label>
+          <p
+            id="cash-change-preview"
+            class="mt-2 rounded-lg bg-slate-50 p-3 text-sm"
+            aria-live="polite"
+            data-i18n="admin.checkout.cashChangePlaceholder"
+          >
+            กรอกยอดรับเพื่อคำนวณเงินทอน
+          </p>
+          <section
+            id="qr-payment-panel"
+            class="mt-4 hidden rounded-xl border-2 border-orange-200 bg-orange-50 p-4"
+          >
+            <div class="text-center">
+              <p
+                class="text-xs font-bold uppercase tracking-widest text-orange-700"
+                data-i18n="admin.checkout.payTitle"
+              >
+                ชำระเงิน
+              </p>
+              <h3 class="mt-1 text-2xl font-black text-slate-900" data-i18n="admin.checkout.scanQr">
+                สแกน QR เพื่อโอนเงิน
+              </h3>
+            </div>
+            <div
+              class="mx-auto mt-4 flex max-w-xs items-center justify-center rounded-xl bg-white p-3 ring-2 ring-orange-100"
+            >
+              <img
+                id="payment-qr-image"
+                src="/assets/images/payment/promptpay.png"
+                alt="QR"
+                class="h-56 w-56 object-contain"
+              />
+            </div>
+            <p
+              id="payment-qr-missing"
+              class="mt-2 hidden text-center text-sm font-semibold text-amber-800"
+              data-i18n="admin.checkout.qrMissing"
+            >
+              ยังไม่พบ QR ร้าน ใส่ไฟล์ที่ public/assets/images/payment/promptpay.png
+            </p>
+            <div class="mt-4 rounded-lg bg-white p-3 text-center ring-1 ring-orange-100">
+              <p class="text-xs font-semibold text-slate-500" data-i18n="admin.checkout.amountDue">
+                ยอดที่ต้องชำระ
+              </p>
+              <p id="qr-payment-amount" class="mt-1 text-3xl font-black text-orange-700">฿0.00</p>
+            </div>
+            <p
+              id="qr-payment-status"
+              class="mt-3 rounded-lg bg-amber-100 p-3 text-center text-sm font-semibold text-amber-900"
+              data-i18n="admin.checkout.qrNoPending"
+            >
+              ยังไม่มีรายการรอตรวจสอบ
+            </p>
+            <div
+              class="mt-3 space-y-1.5 rounded-lg bg-white px-4 py-3 text-left text-xs leading-relaxed text-slate-600 ring-1 ring-slate-200"
+            >
+              <p data-i18n="admin.checkout.qrStep1">1) ให้ลูกค้าสแกน QR และโอนเงินตามยอด</p>
+              <p data-i18n="admin.checkout.qrStep2">2) ขอดูสลิปโอนเงินจากลูกค้า</p>
+              <p>
+                <span data-i18n="admin.checkout.qrStep3Prefix">
+                  3) ตรวจสอบว่ายอดและบัญชีถูกต้อง แล้วกด
+                </span>
+                <strong class="font-bold text-slate-800" data-i18n="admin.checkout.qrConfirm">
+                  ยืนยันรับชำระแล้ว
+                </strong>
+              </p>
+            </div>
+            <button
+              id="confirm-qr-payment"
+              type="button"
+              data-no-btn
+              class="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-green-700 px-4 py-3 text-base font-black text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span
+                id="confirm-qr-spinner"
+                class="hidden inline-block h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                aria-hidden="true"
+              >
+              </span>
+              <span data-i18n="admin.checkout.qrConfirm"> ยืนยันรับชำระแล้ว </span>
+            </button>
+          </section>
+          <p
+            id="payment-workflow-hint"
+            class="mt-3 text-xs text-slate-500"
+            data-i18n="admin.checkout.cashHint"
+          >
+            ยืนยันเงินสดแล้วระบบจะบันทึกการชำระและส่งโต๊ะไปรอทำความสะอาด
+          </p>
+          <button
+            id="confirm-payment"
+            type="submit"
+            class="btn btn-success mt-4 min-h-11 w-full bg-green-700 text-white disabled:opacity-50"
+          >
+            <span id="payment-spinner" class="loading loading-spinner loading-sm hidden"> </span>
+            <span id="confirm-payment-label" data-i18n="admin.checkout.confirmCash">
+              ยืนยันรับเงินสด
+            </span>
+          </button>
+        </form>
+        <div id="print-proforma-actions" class="mt-3 grid grid-cols-2 gap-2 print:hidden">
+          <button
+            id="print-proforma-58"
+            type="button"
+            class="btn btn-outline min-h-11 border-slate-300"
+            data-i18n="admin.checkout.printProforma58"
+          >
+            ใบแจ้งยอด 58 มม.
+          </button>
+          <button
+            id="print-proforma-80"
+            type="button"
+            class="btn btn-outline min-h-11 border-slate-300"
+            data-i18n="admin.checkout.printProforma80"
+          >
+            ใบแจ้งยอด 80 มม.
+          </button>
+        </div>
+        <div id="print-receipt-actions" class="mt-3 hidden grid grid-cols-2 gap-2 print:hidden">
+          <button id="print-receipt-58" type="button" class="btn btn-neutral min-h-11" data-i18n="admin.checkout.printReceipt58">
+            ใบเสร็จ 58 มม.
+          </button>
+          <button id="print-receipt-80" type="button" class="btn btn-neutral min-h-11" data-i18n="admin.checkout.printReceipt80">
+            ใบเสร็จ 80 มม.
+          </button>
+        </div>
+        <button id="print-receipt" type="button" class="hidden" aria-hidden="true"></button>
+      </section>
+    </div>
+    <script src="/js/staff-auth.js"></script>
+    <script src="/js/admin/common.js"></script>
+    <script src="/js/admin/checkout.js"></script>
+    <div
+      id="langSwitcher"
+      data-lang-switcher
+      data-i18n-skip
+      class="lang-switcher lang-switcher-floating"
+      role="group"
+      data-i18n-aria-label="language.switchAria"
+      aria-label="เปลี่ยนภาษา"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        class="lang-switcher__icon"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+      </svg>
+      <button
+        type="button"
+        data-no-btn
+        data-lang="th"
+        class="lang-switcher__btn"
+        aria-pressed="true"
+      >
+        ไทย
+      </button>
+      <button
+        type="button"
+        data-no-btn
+        data-lang="en"
+        class="lang-switcher__btn"
+        aria-pressed="false"
+      >
+        EN
+      </button>
+    </div>
+    <script src="/js/i18n.js"></script>
+    <script src="/js/brand.js"></script>
+  </body>
+</html>

@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="th" data-theme="buffet">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title data-i18n="page.adminMembersTitle">สมาชิกและโปรโมชัน</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="icon" type="image/png" href="/api/settings/favicon?v=1" />
+  </head>
+  <body class="min-h-screen bg-slate-100 text-slate-800">
+    <div class="min-h-screen lg:flex">
+      <aside id="admin-sidebar"></aside>
+      <main class="min-w-0 flex-1 px-4 pt-20 pb-8 sm:px-7 lg:px-9">
+        <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p
+              class="text-xs font-medium uppercase tracking-widest text-orange-600"
+              data-i18n="admin.members.kicker"
+            >
+              ระบบสมาชิกและสิทธิพิเศษ
+            </p>
+            <h1
+              class="mt-1 text-3xl font-semibold text-slate-900 sm:text-4xl"
+              data-i18n="admin.members.title"
+            >
+              จัดการสมาชิกและโปรโมชัน
+            </h1>
+            <p class="mt-1.5 text-sm font-normal text-slate-500" data-i18n="admin.members.subtitle">
+              ดูแลข้อมูลสมาชิก สะสมแต้ม ระดับบัตร และคูปองส่วนลดสำหรับลูกค้าของร้าน
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              id="export-members-csv"
+              type="button"
+              class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50"
+              data-i18n="admin.members.exportCsv"
+            >
+              Export CSV
+            </button>
+            <button
+              id="export-members-excel"
+              type="button"
+              class="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-800"
+              data-i18n="admin.members.exportExcel"
+            >
+              Export Excel
+            </button>
+            <button
+              id="add-member-button"
+              type="button"
+              class="rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700"
+              data-i18n="admin.members.addMemberBtn"
+            >
+              สมัครสมาชิกใหม่
+            </button>
+            <button
+              id="add-promo-button"
+              type="button"
+              class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
+              data-i18n="admin.members.addPromoBtn"
+            >
+              เพิ่มคูปองโปรโมชัน
+            </button>
+          </div>
+        </header>
+
+        <p id="page-message" class="mb-5 hidden rounded-xl p-4" role="status"></p>
+
+        <section
+          class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+          data-i18n-aria-label="admin.members.summaryAria"
+          aria-label="สรุปข้อมูลสมาชิกและโปรโมชัน"
+        >
+          <article class="rounded-2xl bg-white p-5 shadow-sm">
+            <p class="text-sm font-normal text-slate-500" data-i18n="admin.members.kpiTotalMembers">
+              สมาชิกทั้งหมด
+            </p>
+            <p id="kpi-total-members" class="mt-2 text-3xl font-semibold text-slate-900">0</p>
+            <p id="kpi-tier-breakdown" class="mt-1.5 text-xs font-normal text-slate-500">—</p>
+          </article>
+          <article class="rounded-2xl bg-white p-5 shadow-sm">
+            <p class="text-sm font-normal text-slate-500" data-i18n="admin.members.kpiPointsPool">
+              แต้มคงเหลือในระบบ
+            </p>
+            <p id="kpi-points-pool" class="mt-2 text-3xl font-semibold text-orange-600">0</p>
+            <p id="kpi-points-issued" class="mt-1.5 text-xs font-normal text-slate-500">—</p>
+          </article>
+          <article class="rounded-2xl bg-white p-5 shadow-sm">
+            <p class="text-sm font-normal text-slate-500" data-i18n="admin.members.kpiActivePromos">
+              คูปองที่เปิดใช้งาน
+            </p>
+            <p id="kpi-active-promos" class="mt-2 text-3xl font-semibold text-emerald-700">0</p>
+            <p id="kpi-redemptions" class="mt-1.5 text-xs font-normal text-slate-500">—</p>
+          </article>
+          <article class="rounded-2xl bg-white p-5 shadow-sm">
+            <p class="text-sm font-normal text-slate-500" data-i18n="admin.members.kpiTotalSaved">
+              ส่วนลดสมาชิกสะสม
+            </p>
+            <p id="kpi-total-saved" class="mt-2 text-3xl font-semibold text-amber-700">฿0.00</p>
+            <p id="kpi-member-spend" class="mt-1.5 text-xs font-normal text-slate-500">—</p>
+          </article>
+        </section>
+
+        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div
+            id="loyalty-tabs"
+            class="inline-flex flex-wrap rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
+            role="tablist"
+          >
+            <button
+              type="button"
+              role="tab"
+              data-tab="members"
+              aria-selected="true"
+              class="rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-medium text-white"
+              data-i18n="admin.members.tabMembers"
+            >
+              รายชื่อสมาชิก
+            </button>
+            <button
+              type="button"
+              role="tab"
+              data-tab="promos"
+              aria-selected="false"
+              class="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+              data-i18n="admin.members.tabPromos"
+            >
+              คูปองและโปรโมชัน
+            </button>
+            <button
+              type="button"
+              role="tab"
+              data-tab="logs"
+              aria-selected="false"
+              class="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+              data-i18n="admin.members.tabLogs"
+            >
+              ประวัติแต้ม & ระดับบัตร
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="loyalty-loading"
+          class="flex min-h-24 items-center justify-center gap-3 text-slate-500"
+          role="status"
+        >
+          <span
+            class="h-6 w-6 animate-spin rounded-full border-4 border-orange-100 border-t-orange-600"
+          ></span>
+          <span data-i18n="common.loadingData">กำลังโหลดข้อมูล...</span>
+        </div>
+
+        <section id="panel-members" class="space-y-4">
+          <form
+            id="member-filter-form"
+            class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm"
+          >
+            <input
+              id="member-search-input"
+              type="search"
+              class="min-w-[220px] flex-1 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-orange-500"
+              placeholder="ค้นหาจากชื่อ เบอร์โทร หรือรหัสสมาชิก..."
+              data-i18n-placeholder="admin.members.searchPlaceholder"
+            />
+            <select
+              id="member-tier-filter"
+              class="rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-orange-500"
+            >
+              <option value="" data-i18n="admin.members.allTiers">ทุกระดับบัตร</option>
+              <option value="MEMBER" data-i18n="admin.members.tierOptionMember">
+                สมาชิกทั่วไป
+              </option>
+              <option value="SILVER">Silver</option>
+              <option value="GOLD">Gold</option>
+              <option value="VIP">VIP</option>
+            </select>
+            <button
+              id="member-reset-btn"
+              type="button"
+              class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              data-i18n="admin.filterClear"
+            >
+              ล้างตัวกรอง
+            </button>
+            <p
+              id="member-result-count"
+              class="ml-auto text-xs font-normal text-slate-500"
+              aria-live="polite"
+            ></p>
+          </form>
+
+          <div class="overflow-hidden rounded-2xl bg-white shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[820px] text-left">
+                <thead class="bg-slate-50 text-sm text-slate-500">
+                  <tr>
+                    <th class="p-4 font-medium" data-i18n="admin.members.colCode">รหัส</th>
+                    <th class="p-4 font-medium" data-i18n="admin.members.colMember">
+                      สมาชิก / เบอร์โทร
+                    </th>
+                    <th class="p-4 font-medium" data-i18n="admin.members.colTier">ระดับบัตร</th>
+                    <th class="p-4 text-right font-medium" data-i18n="admin.members.colPoints">
+                      แต้มคงเหลือ
+                    </th>
+                    <th class="p-4 text-right font-medium" data-i18n="admin.members.colSpent">
+                      ยอดสะสม
+                    </th>
+                    <th class="p-4 font-medium" data-i18n="admin.members.colStatus">สถานะ</th>
+                    <th class="p-4 text-right font-medium" data-i18n="admin.members.colActions">
+                      จัดการ
+                    </th>
+                  </tr>
+                </thead>
+                <tbody
+                  id="member-rows"
+                  class="divide-y divide-slate-100 text-sm font-normal"
+                ></tbody>
+              </table>
+            </div>
+            <p
+              id="members-empty"
+              class="hidden p-8 text-center font-normal text-slate-500"
+              data-i18n="admin.members.emptyMembers"
+            >
+              ไม่พบข้อมูลสมาชิก
+            </p>
+          </div>
+        </section>
+
+        <section id="panel-promos" class="hidden space-y-4">
+          <div class="overflow-hidden rounded-2xl bg-white shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[820px] text-left">
+                <thead class="bg-slate-50 text-sm text-slate-500">
+                  <tr>
+                    <th class="p-4 font-medium" data-i18n="admin.members.colPromoCode">
+                      รหัสคูปอง
+                    </th>
+                    <th class="p-4 font-medium" data-i18n="admin.members.colPromoTitle">
+                      ชื่อโปรโมชัน / เงื่อนไข
+                    </th>
+                    <th class="p-4 font-medium" data-i18n="admin.members.colDiscountValue">
+                      มูลค่าส่วนลด
+                    </th>
+                    <th class="p-4 text-right font-medium" data-i18n="admin.members.colPointsCost">
+                      แต้มที่ใช้แลก
+                    </th>
+                    <th class="p-4 text-right font-medium" data-i18n="admin.members.colMinSpend">
+                      ยอดขั้นต่ำ
+                    </th>
+                    <th
+                      class="p-4 text-right font-medium"
+                      data-i18n="admin.members.colRedeemedCount"
+                    >
+                      แลกไปแล้ว
+                    </th>
+                    <th class="p-4 font-medium" data-i18n="admin.members.colStatus">สถานะ</th>
+                    <th class="p-4 text-right font-medium" data-i18n="admin.members.colActions">
+                      จัดการ
+                    </th>
+                  </tr>
+                </thead>
+                <tbody
+                  id="promo-rows"
+                  class="divide-y divide-slate-100 text-sm font-normal"
+                ></tbody>
+              </table>
+            </div>
+            <p
+              id="promos-empty"
+              class="hidden p-8 text-center font-normal text-slate-500"
+              data-i18n="admin.members.emptyPromos"
+            >
+              ยังไม่มีคูปองหรือโปรโมชัน
+            </p>
+          </div>
+        </section>
+
+        <section id="panel-logs" class="hidden space-y-5">
+          <div>
+            <h2
+              class="mb-3 text-lg font-semibold text-slate-900"
+              data-i18n="admin.members.tiersHeading"
+            >
+              เกณฑ์ระดับบัตรสมาชิกอัตโนมัติ
+            </h2>
+            <div id="tier-cards" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"></div>
+          </div>
+
+          <div class="overflow-hidden rounded-2xl bg-white shadow-sm">
+            <div class="border-b border-slate-100 px-5 py-4">
+              <h2 class="text-lg font-semibold text-slate-900" data-i18n="admin.members.txHeading">
+                ประวัติการใช้แต้มและคูปองล่าสุด
+              </h2>
+              <p
+                class="mt-0.5 text-xs font-normal text-slate-500"
+                data-i18n="admin.members.txSubtitle"
+              >
+                รายการสะสมแต้ม แลกคูปองส่วนลด และการปรับแต้มของสมาชิกทั้งหมด
+              </p>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[820px] text-left">
+                <thead class="bg-slate-50 text-sm text-slate-500">
+                  <tr>
+                    <th class="p-4 font-medium" data-i18n="admin.members.colTime">เวลา</th>
+                    <th class="p-4 font-medium" data-i18n="admin.members.colMemberShort">สมาชิก</th>
+                    <th class="p-4 font-medium" data-i18n="admin.members.colType">ประเภท</th>
+                    <th class="p-4 text-right font-medium" data-i18n="admin.members.colPointsShort">
+                      แต้ม
+                    </th>
+                    <th class="p-4 text-right font-medium" data-i18n="checkout.discount">ส่วนลด</th>
+                    <th class="p-4 font-medium" data-i18n="admin.members.colPromoOrNote">
+                      คูปอง / รายละเอียด
+                    </th>
+                    <th class="p-4 font-medium" data-i18n="admin.members.colOperator">
+                      ผู้ทำรายการ
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="tx-rows" class="divide-y divide-slate-100 text-sm font-normal"></tbody>
+              </table>
+            </div>
+            <p
+              id="logs-empty"
+              class="hidden p-8 text-center font-normal text-slate-500"
+              data-i18n="admin.members.emptyLogs"
+            >
+              ยังไม่มีประวัติธุรกรรมแต้ม
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div
+      id="member-modal"
+      class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="member-modal-title"
+    >
+      <form
+        id="member-form"
+        class="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 font-normal shadow-2xl"
+      >
+        <div class="mb-5 flex items-center justify-between">
+          <h2 id="member-modal-title" class="text-xl font-semibold text-slate-900" data-i18n-skip>
+            สมัครสมาชิกใหม่
+          </h2>
+          <button
+            type="button"
+            data-no-btn
+            data-close-member-modal
+            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-slate-900"
+            data-i18n-aria-label="common.close"
+            aria-label="ปิด"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.25"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <input type="hidden" name="memberId" />
+        <div class="mb-4 grid grid-cols-1 gap-3.5 sm:grid-cols-[145px_minmax(0,1fr)]">
+          <label class="block text-sm font-normal text-slate-700">
+            <span class="font-medium text-slate-700" data-i18n="common.prefixLabel">คำนำหน้า</span>
+            <select
+              name="prefix"
+              class="select select-bordered mt-1.5 h-[42px] min-h-0 w-full rounded-xl border-slate-300 bg-white text-sm font-normal text-slate-800"
+            >
+              <option value="" data-i18n="common.prefixNone">ไม่ระบุ</option>
+              <option value="นาย" data-i18n="common.prefixMr">นาย</option>
+              <option value="นาง" data-i18n="common.prefixMrs">นาง</option>
+              <option value="นางสาว" data-i18n="common.prefixMiss">นางสาว</option>
+            </select>
+          </label>
+          <label class="block text-sm font-normal text-slate-700">
+            <span class="font-medium text-slate-700" data-i18n="admin.members.fieldFullName"
+              >ชื่อ-นามสกุล *</span
+            >
+            <input
+              name="fullName"
+              required
+              class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800"
+              placeholder="เช่น สมชาย ใจดี"
+              data-i18n-placeholder="admin.members.fullNamePlaceholder"
+            />
+          </label>
+        </div>
+        <div class="mb-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+          <label class="block text-sm font-normal text-slate-700">
+            <span class="font-medium text-slate-700" data-i18n="common.nicknameLabel"
+              >ชื่อเล่น</span
+            >
+            <input
+              name="nickname"
+              maxlength="60"
+              class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800"
+              placeholder="เช่น บอล, เมย์"
+              data-i18n-placeholder="common.nicknamePlaceholder"
+            />
+          </label>
+          <label class="block text-sm font-normal text-slate-700">
+            <span class="font-medium text-slate-700" data-i18n="common.ageLabel">อายุ (ปี)</span>
+            <input
+              name="age"
+              type="number"
+              min="1"
+              max="120"
+              step="1"
+              data-no-stepper
+              class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800"
+              placeholder="เช่น 25"
+              data-i18n-placeholder="common.agePlaceholder"
+            />
+          </label>
+        </div>
+        <div class="mb-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+          <label class="block text-sm font-normal text-slate-700">
+            <span class="font-medium text-slate-700" data-i18n="admin.members.fieldPhone"
+              >เบอร์โทรศัพท์ * (9–15 หลัก)</span
+            >
+            <input
+              name="phone"
+              type="tel"
+              required
+              class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800"
+              placeholder="0812345678"
+            />
+          </label>
+          <label class="block text-sm font-normal text-slate-700">
+            <span class="font-medium text-slate-700" data-i18n="admin.members.fieldEmail"
+              >อีเมล (ไม่บังคับ)</span
+            >
+            <input
+              name="email"
+              type="email"
+              class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800"
+              placeholder="customer@example.com"
+            />
+          </label>
+        </div>
+        <label
+          id="member-initial-points-wrap"
+          class="mb-4 block text-sm font-normal text-slate-700"
+        >
+          <span class="font-medium text-slate-700" data-i18n="admin.members.fieldInitialPoints"
+            >แต้มต้อนรับเริ่มต้น</span
+          >
+          <input
+            name="initialPoints"
+            type="number"
+            min="0"
+            step="1"
+            value="0"
+            data-no-stepper
+            class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800"
+          />
+          <small
+            class="mt-1 block font-normal text-slate-500"
+            data-i18n="admin.members.tierAutoHint"
+            >ระบบคำนวณระดับบัตร (ทั่วไป / Silver / Gold / VIP) ให้อัตโนมัติตามแต้ม</small
+          >
+        </label>
+        <label
+          id="member-status-wrap"
+          class="mb-5 hidden items-center gap-2.5 text-sm font-normal text-slate-700"
+        >
+          <input
+            name="isActive"
+            type="checkbox"
+            checked
+            class="checkbox checkbox-sm checkbox-primary"
+          />
+          <span data-i18n="admin.members.fieldActiveMember">เปิดใช้งานบัญชีสมาชิกนี้</span>
+        </label>
+        <button
+          type="submit"
+          class="w-full rounded-xl bg-orange-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-orange-700"
+          data-i18n="admin.members.saveMemberBtn"
+        >
+          บันทึกข้อมูลสมาชิก
+        </button>
+      </form>
+    </div>
+
+    <div
+      id="promo-modal"
+      class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="promo-modal-title"
+    >
+      <form
+        id="promo-form"
+        class="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 font-normal shadow-2xl"
+      >
+        <div class="mb-5 flex items-center justify-between">
+          <h2 id="promo-modal-title" class="text-xl font-semibold text-slate-900" data-i18n-skip>
+            เพิ่มคูปองโปรโมชัน
+          </h2>
+          <button
+            type="button"
+            data-no-btn
+            data-close-promo-modal
+            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-slate-900"
+            data-i18n-aria-label="common.close"
+            aria-label="ปิด"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.25"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <input type="hidden" name="promotionId" />
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label class="block text-sm font-normal text-slate-700">
+            <span class="font-medium text-slate-700" data-i18n="admin.members.fieldPromoCode"
+              >รหัสคูปอง *</span
+            >
+            <input
+              name="promoCode"
+              required
+              minlength="3"
+              maxlength="30"
+              pattern="[A-Za-z0-9_-]{3,30}"
+              class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal uppercase text-slate-800"
+              placeholder="SAVE50"
+            />
+          </label>
+          <label class="block text-sm font-normal text-slate-700">
+            <span class="font-medium text-slate-700" data-i18n="admin.members.fieldPointsCost"
+              >แต้มที่ใช้แลก *</span
+            >
+            <input
+              name="pointsCost"
+              type="number"
+              min="0"
+              step="1"
+              value="0"
+              required
+              class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800"
+            />
+          </label>
+        </div>
+        <label class="mt-4 block text-sm font-normal text-slate-700">
+          <span class="font-medium text-slate-700" data-i18n="admin.members.fieldPromoTitle"
+            >ชื่อโปรโมชัน/คูปอง *</span
+          >
+          <input
+            name="title"
+            required
+            maxlength="160"
+            class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800"
+            placeholder="เช่น แลก 30 แต้ม ลดทันที 50 บาท"
+            data-i18n-placeholder="admin.members.promoTitlePlaceholder"
+          />
+        </label>
+        <label class="mt-4 block text-sm font-normal text-slate-700">
+          <span class="font-medium text-slate-700" data-i18n="admin.members.fieldPromoDesc"
+            >รายละเอียดเงื่อนไข</span
+          >
+          <input
+            name="description"
+            maxlength="400"
+            class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800"
+            placeholder="คำอธิบายเพิ่มเติม (ไม่บังคับ)"
+            data-i18n-placeholder="admin.members.promoDescPlaceholder"
+          />
+        </label>
+        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label class="block text-sm font-normal text-slate-700">
+            <span class="font-medium text-slate-700" data-i18n="admin.members.fieldDiscountType"
+              >รูปแบบส่วนลด *</span
+            >
+            <select
+              name="discountType"
+              class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800"
+            >
+              <option value="FIXED" data-i18n="admin.members.discountTypeFixed">
+                ลดเป็นจำนวนเงิน (บาท)
+              </option>
+              <option value="PERCENT" data-i18n="admin.members.discountTypePercent">
+                ลดเป็นเปอร์เซ็นต์ (%)
+              </option>
+            </select>
+          </label>
+          <label class="block text-sm font-normal text-slate-700">
+            <span class="font-medium text-slate-700" data-i18n="admin.members.fieldDiscountValue"
+              >มูลค่าส่วนลด *</span
+            >
+            <input
+              name="discountValue"
+              type="number"
+              min="1"
+              step="0.01"
+              data-no-stepper
+              required
+              class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800"
+              placeholder="50"
+            />
+          </label>
+        </div>
+        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label class="block text-sm font-normal text-slate-700">
+            <span class="font-medium text-slate-700" data-i18n="admin.members.fieldMinSpend"
+              >ยอดอาหารขั้นต่ำ (บาท)</span
+            >
+            <input
+              name="minSpend"
+              type="number"
+              min="0"
+              step="0.01"
+              value="0"
+              data-no-stepper
+              class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800"
+            />
+          </label>
+          <label class="block text-sm font-normal text-slate-700">
+            <span class="font-medium text-slate-700" data-i18n="admin.members.fieldMaxDiscount"
+              >ลดสูงสุด (บาท, เฉพาะ %)</span
+            >
+            <input
+              name="maxDiscount"
+              type="number"
+              min="1"
+              step="0.01"
+              data-no-stepper
+              class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-normal text-slate-800"
+              placeholder="เว้นว่าง = ไม่จำกัด"
+              data-i18n-placeholder="admin.members.maxDiscountPlaceholder"
+            />
+          </label>
+        </div>
+        <label class="mt-4 flex items-center gap-2.5 text-sm font-normal text-slate-700">
+          <input
+            name="isActive"
+            type="checkbox"
+            checked
+            class="checkbox checkbox-sm checkbox-primary"
+          />
+          <span data-i18n="admin.members.fieldPromoActive"
+            >เปิดให้พนักงานเลือกใช้คูปองนี้ตอนเช็คบิล</span
+          >
+        </label>
+        <button
+          type="submit"
+          class="mt-5 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800"
+          data-i18n="admin.members.savePromoBtn"
+        >
+          บันทึกคูปองโปรโมชัน
+        </button>
+      </form>
+    </div>
+
+    <div
+      id="points-modal"
+      class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="points-modal-name"
+    >
+      <section
+        class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 font-normal shadow-2xl"
+      >
+        <div class="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <p
+              id="points-modal-code"
+              class="text-xs font-medium uppercase tracking-widest text-orange-600"
+              data-i18n-skip
+            >
+              MB0001
+            </p>
+            <h2 id="points-modal-name" class="text-xl font-semibold text-slate-900" data-i18n-skip>
+              —
+            </h2>
+            <p
+              id="points-modal-meta"
+              class="mt-1 text-sm font-normal text-slate-500"
+              data-i18n-skip
+            ></p>
+          </div>
+          <button
+            type="button"
+            data-no-btn
+            data-close-points-modal
+            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-slate-900"
+            data-i18n-aria-label="common.close"
+            aria-label="ปิด"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.25"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form
+          id="points-adjust-form"
+          class="mb-5 rounded-xl border border-orange-200 bg-orange-50/70 p-4"
+        >
+          <input type="hidden" name="memberId" />
+          <p
+            class="mb-2 text-sm font-medium text-slate-800"
+            data-i18n="admin.members.adjustPointsTitle"
+          >
+            ปรับปรุงแต้มพิเศษ
+          </p>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <input
+              name="pointsDelta"
+              type="number"
+              data-no-stepper
+              required
+              placeholder="+20 หรือ -10"
+              data-i18n-placeholder="admin.members.pointsDeltaPlaceholder"
+              class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-800"
+            />
+            <input
+              name="note"
+              placeholder="หมายเหตุ เช่น แต้มของขวัญวันเกิด"
+              data-i18n-placeholder="admin.members.pointsNotePlaceholder"
+              class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-800 sm:col-span-2"
+            />
+          </div>
+          <button
+            type="submit"
+            class="mt-3 rounded-xl bg-orange-600 px-4 py-2 text-xs font-medium text-white transition hover:bg-orange-700"
+            data-i18n="admin.members.savePointsAdjustBtn"
+          >
+            บันทึกการปรับแต้ม
+          </button>
+        </form>
+
+        <h3
+          class="mb-2 text-sm font-medium text-slate-700"
+          data-i18n="admin.members.recentMemberTxTitle"
+        >
+          ประวัติรายการแต้มล่าสุด
+        </h3>
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500">
+              <tr>
+                <th class="p-3 font-medium" data-i18n="admin.members.colTime">เวลา</th>
+                <th class="p-3 font-medium" data-i18n="admin.members.colType">ประเภท</th>
+                <th class="p-3 text-right font-medium" data-i18n="admin.members.colPointsShort">
+                  แต้ม
+                </th>
+                <th class="p-3 text-right font-medium" data-i18n="checkout.discount">ส่วนลด</th>
+                <th class="p-3 font-medium" data-i18n="admin.members.colDetails">รายละเอียด</th>
+              </tr>
+            </thead>
+            <tbody id="member-tx-rows" class="divide-y divide-slate-100 font-normal"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <script src="/js/staff-auth.js"></script>
+    <script src="/js/admin/common.js"></script>
+    <script src="/js/admin/manageMembers.js"></script>
+    <div
+      id="langSwitcher"
+      data-lang-switcher
+      data-i18n-skip
+      class="lang-switcher lang-switcher-floating"
+      role="group"
+      data-i18n-aria-label="language.switchAria"
+      aria-label="เปลี่ยนภาษา"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        class="lang-switcher__icon"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+      </svg>
+      <button
+        type="button"
+        data-no-btn
+        data-lang="th"
+        class="lang-switcher__btn"
+        aria-pressed="true"
+      >
+        ไทย
+      </button>
+      <button
+        type="button"
+        data-no-btn
+        data-lang="en"
+        class="lang-switcher__btn"
+        aria-pressed="false"
+      >
+        EN
+      </button>
+    </div>
+    <script src="/js/i18n.js"></script>
+    <script src="/js/brand.js"></script>
+  </body>
+</html>

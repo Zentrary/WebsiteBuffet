@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="th" data-theme="buffet">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title data-i18n="page.adminQueueTitle">จัดการคิว</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="icon" type="image/png" href="/api/settings/favicon?v=1" />
+    <style>
+      @media print {
+        body {
+          margin: 0;
+        }
+        body * {
+          visibility: hidden !important;
+        }
+
+        body.print-entry-qr #queue-entry-card,
+        body.print-entry-qr #queue-entry-card * {
+          visibility: visible !important;
+        }
+        body.print-entry-qr #queue-entry-card {
+          position: absolute;
+          inset: 0;
+          display: block !important;
+          border: 0;
+          box-shadow: none;
+        }
+        body.print-entry-qr #queue-entry-actions {
+          display: none !important;
+        }
+
+        body.print-ticket #ticket-print-area,
+        body.print-ticket #ticket-print-area * {
+          visibility: visible !important;
+        }
+        body.print-ticket #ticket-print-area {
+          position: absolute;
+          inset: 0;
+          display: block !important;
+        }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-orange-50/60 text-slate-800">
+    <div class="min-h-screen lg:flex">
+      <aside id="admin-sidebar"></aside>
+      <main class="min-w-0 flex-1 px-4 pt-20 pb-6 sm:px-7 lg:px-9">
+        <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p
+              class="text-xs font-medium uppercase tracking-widest text-orange-600"
+              data-i18n="admin.operations"
+            >
+              การดำเนินงาน
+            </p>
+            <h1
+              class="mt-1 text-2xl font-bold text-slate-900 sm:text-3xl"
+              data-i18n="queue.manage.title"
+            >
+              จัดการคิว
+            </h1>
+            <p class="mt-1 text-sm font-normal text-slate-500" data-i18n="queue.manage.subtitle">
+              การเรียกคิวจะจองโต๊ะและเริ่มเวลา ลูกค้าต้องยืนยันก่อนเปลี่ยนโต๊ะเป็นกำลังใช้งาน
+            </p>
+          </div>
+          <button
+            id="call-next"
+            data-no-btn
+            class="inline-flex h-11 items-center justify-center rounded-xl bg-orange-600 px-5 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700 disabled:opacity-50"
+            data-i18n="queue.manage.callNext"
+          >
+            เรียกคิวถัดไป
+          </button>
+        </header>
+        <p
+          id="page-message"
+          class="mb-4 hidden rounded-xl p-3.5 text-sm font-normal"
+          role="status"
+        ></p>
+        <section
+          id="queue-entry-card"
+          class="card mb-6 rounded-2xl border border-orange-200/80 bg-white shadow-sm"
+        >
+          <div class="card-body gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div class="max-w-2xl">
+              <h2 class="text-base font-semibold text-slate-900" data-i18n="queue.staffQrTitle">
+                QR รับคิวประจำร้าน
+              </h2>
+              <p
+                class="mt-1 text-sm font-normal leading-relaxed text-slate-600"
+                data-i18n="queue.staffQrDescription"
+              >
+                ให้ลูกค้าสแกน QR นี้เพื่อเปิดแบบฟอร์มรับคิว ลูกค้าไม่ต้องสแกน QR อีกครั้งหลังรับคิว
+                ให้เปิดหน้ารอคิวไว้จนระบบพาไปเมนู
+              </p>
+              <p
+                id="queue-entry-url"
+                class="mt-2 break-all text-sm font-medium text-orange-700"
+              ></p>
+              <p class="mt-1.5 text-xs font-normal text-slate-500" data-i18n="queue.staffQrWarning">
+                หมายเหตุ: Quick Tunnel เปลี่ยน URL เมื่อเริ่มใหม่ ต้องสร้างและพิมพ์ QR ใหม่ทุกครั้ง
+                หากต้องการ QR ถาวรให้ใช้โดเมน/Named Tunnel
+              </p>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+              <img
+                id="queue-entry-qr"
+                class="hidden h-44 w-44 rounded-xl border border-slate-200 bg-white p-2"
+                alt="Queue entry QR"
+              />
+              <div id="queue-entry-actions" class="flex flex-wrap justify-center gap-2">
+                <button
+                  id="create-entry-qr"
+                  data-no-btn
+                  type="button"
+                  class="inline-flex h-10 items-center justify-center rounded-xl bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700"
+                  data-i18n="queue.staffQrCreate"
+                >
+                  สร้าง QR รับคิว
+                </button>
+                <button
+                  id="print-entry-qr-58"
+                  data-no-btn
+                  type="button"
+                  class="hidden h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  QR 58mm
+                </button>
+                <button
+                  id="print-entry-qr"
+                  data-no-btn
+                  type="button"
+                  class="hidden h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  data-i18n="queue.staffQrPrint"
+                >
+                  QR 80mm
+                </button>
+                <button
+                  id="hide-entry-qr"
+                  data-no-btn
+                  type="button"
+                  class="hidden h-10 rounded-xl border border-slate-200 bg-slate-100 px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-200"
+                  data-i18n="queue.staffQrHide"
+                >
+                  ซ่อน QR
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+        <div
+          id="queue-loading"
+          class="flex min-h-24 items-center justify-center gap-3 text-sm font-normal text-slate-500"
+          role="status"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            class="h-5 w-5 animate-spin text-orange-600"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+              class="opacity-20"
+              stroke="currentColor"
+              stroke-width="3"
+            ></circle>
+            <path
+              d="M21 12a9 9 0 0 0-9-9"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-linecap="round"
+            ></path>
+          </svg>
+          <span data-i18n="admin.loadingQueues"> กำลังโหลดคิว... </span>
+        </div>
+        <div class="grid grid-cols-1 gap-5 xl:grid-cols-3">
+          <section class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5">
+            <h2
+              class="mb-3.5 flex items-center justify-between text-base font-semibold text-slate-800"
+            >
+              <span data-i18n="queue.status.waiting"> รอเรียก </span>
+              <span
+                id="waiting-count"
+                class="rounded-lg bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-amber-200/80 tabular-nums"
+              >
+                0
+              </span>
+            </h2>
+            <div id="queue-waiting" class="space-y-3"></div>
+            <p
+              id="empty-waiting"
+              class="hidden py-6 text-center text-sm font-normal text-slate-400"
+              data-i18n="queue.manage.noWaiting"
+            >
+              ไม่มีคิวรอ
+            </p>
+          </section>
+          <section class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5">
+            <h2
+              class="mb-3.5 flex items-center justify-between text-base font-semibold text-slate-800"
+            >
+              <span data-i18n="queue.status.called"> เรียกแล้ว </span>
+              <span
+                id="called-count"
+                class="rounded-lg bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-800 ring-1 ring-sky-200/80 tabular-nums"
+              >
+                0
+              </span>
+            </h2>
+            <div id="queue-called" class="space-y-3"></div>
+            <p
+              id="empty-called"
+              class="hidden py-6 text-center text-sm font-normal text-slate-400"
+              data-i18n="queue.manage.noCalled"
+            >
+              ไม่มีคิวที่เรียกแล้ว
+            </p>
+          </section>
+          <section class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5">
+            <h2
+              class="mb-3.5 flex items-center justify-between text-base font-semibold text-slate-800"
+            >
+              <span data-i18n="queue.status.seated"> นั่งโต๊ะแล้ว </span>
+              <span
+                id="seated-count"
+                class="rounded-lg bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-emerald-200/80 tabular-nums"
+              >
+                0
+              </span>
+            </h2>
+            <div id="queue-seated" class="space-y-3"></div>
+            <p
+              id="empty-seated"
+              class="hidden py-6 text-center text-sm font-normal text-slate-400"
+              data-i18n="queue.manage.noSeated"
+            >
+              ไม่มีคิวที่นั่งแล้ว
+            </p>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <div
+      id="ticket-modal"
+      class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-3 sm:p-6 backdrop-blur-[1px]"
+      role="dialog"
+      aria-modal="true"
+    >
+      <section
+        class="relative max-h-full w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xl sm:p-6"
+      >
+        <button
+          id="ticket-modal-close"
+          type="button"
+          data-no-btn
+          class="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-slate-900"
+          data-i18n-aria-label="common.close"
+          aria-label="ปิด"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            class="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+        <h2 class="text-lg font-semibold text-slate-900">บัตรคิว</h2>
+        <p class="mt-0.5 text-xs font-normal text-slate-500">ตรวจสอบความถูกต้องก่อนพิมพ์</p>
+        <div class="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+          <div id="ticket-preview" class="mx-auto w-full max-w-[72mm] text-center font-sans"></div>
+        </div>
+        <div class="mt-5 flex gap-2">
+          <button
+            id="ticket-modal-cancel"
+            data-no-btn
+            type="button"
+            class="h-10 flex-1 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            ปิด
+          </button>
+          <button
+            id="ticket-modal-print-58"
+            data-no-btn
+            type="button"
+            class="h-10 flex-1 rounded-xl border border-orange-300 bg-white px-3 text-sm font-medium text-orange-800 transition hover:bg-orange-50"
+          >
+            58mm
+          </button>
+          <button
+            id="ticket-modal-print"
+            data-no-btn
+            type="button"
+            class="h-10 flex-1 rounded-xl bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700 disabled:opacity-50"
+          >
+            <span id="ticket-modal-print-label"> 80mm </span>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div id="ticket-print-area" class="hidden">
+      <div
+        id="ticket-print-content"
+        class="mx-auto text-center"
+        style="width: 72mm; font-family: system-ui, sans-serif"
+      ></div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/staff-auth.js"></script>
+    <script src="/js/admin/common.js"></script>
+    <script src="/js/admin/manageQueue.js"></script>
+    <div
+      id="langSwitcher"
+      data-lang-switcher
+      data-i18n-skip
+      class="lang-switcher lang-switcher-floating"
+      role="group"
+      data-i18n-aria-label="language.switchAria"
+      aria-label="เปลี่ยนภาษา"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        class="lang-switcher__icon"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+      </svg>
+      <button
+        type="button"
+        data-no-btn
+        data-lang="th"
+        class="lang-switcher__btn"
+        aria-pressed="true"
+      >
+        ไทย
+      </button>
+      <button
+        type="button"
+        data-no-btn
+        data-lang="en"
+        class="lang-switcher__btn"
+        aria-pressed="false"
+      >
+        EN
+      </button>
+    </div>
+    <script src="/js/i18n.js"></script>
+    <script src="/js/brand.js"></script>
+  </body>
+</html>

@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="th" data-theme="buffet">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title data-i18n="page.adminStaffTitle">จัดการพนักงาน</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="icon" type="image/png" href="/api/settings/favicon?v=1" />
+  </head>
+  <body class="min-h-screen bg-slate-100 text-slate-800">
+    <div class="min-h-screen lg:flex">
+      <aside id="admin-sidebar"></aside>
+      <main class="min-w-0 flex-1 px-4 pt-20 pb-6 sm:px-7 lg:px-9">
+        <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p
+              class="font-bold uppercase tracking-widest text-orange-600"
+              data-i18n="admin.restaurantManagement"
+            >
+              การจัดการร้าน
+            </p>
+            <h1 class="mt-1 text-3xl font-black" data-i18n="admin.staff.title">จัดการพนักงาน</h1>
+          </div>
+          <button
+            id="add-staff-button"
+            type="button"
+            class="rounded-xl bg-orange-600 px-5 py-3 font-bold text-white shadow-sm transition hover:bg-orange-700"
+            data-i18n="admin.staff.add"
+          >
+            เพิ่มพนักงาน
+          </button>
+        </header>
+        <p id="page-message" class="mb-4 hidden rounded-xl p-4" role="status"></p>
+        <div
+          id="staff-loading"
+          class="flex min-h-24 items-center justify-center gap-3 text-slate-500"
+          role="status"
+        >
+          <span
+            class="h-6 w-6 animate-spin rounded-full border-4 border-orange-100 border-t-orange-600"
+          >
+          </span>
+          <span data-i18n="admin.staff.loading"> กำลังโหลดพนักงาน... </span>
+        </div>
+        <section class="overflow-hidden rounded-2xl bg-white shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[820px] text-left">
+              <thead class="bg-slate-50 text-sm text-slate-500">
+                <tr>
+                  <th class="p-4" data-i18n="admin.staff.colAccount">ชื่อผู้ใช้</th>
+                  <th class="p-4" data-i18n="admin.staff.colProfile">ข้อมูลพนักงาน</th>
+                  <th class="p-4" data-i18n="common.ageShort">อายุ</th>
+                  <th class="p-4" data-i18n="admin.staff.roleOrPosition">บทบาท / ตำแหน่ง</th>
+                  <th class="p-4" data-i18n="admin.status">สถานะ</th>
+                  <th class="p-4 text-right" data-i18n="admin.actions">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="staff-rows" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+          </div>
+          <p
+            id="staff-empty"
+            class="hidden p-8 text-center text-slate-500"
+            data-i18n="admin.staff.empty"
+          >
+            ยังไม่มีบัญชีพนักงาน
+          </p>
+        </section>
+      </main>
+    </div>
+
+    <div
+      id="staff-modal"
+      class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/55 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="staff-modal-title"
+    >
+      <form
+        id="staff-form"
+        class="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xl"
+      >
+        <div class="mb-5 flex items-center justify-between gap-3">
+          <h2 id="staff-modal-title" class="text-xl font-semibold text-slate-900" data-i18n-skip>
+            เพิ่มพนักงาน
+          </h2>
+          <button
+            data-close-modal
+            data-no-btn
+            type="button"
+            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-slate-900"
+            data-i18n-aria-label="common.close"
+            aria-label="ปิด"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <input name="staffId" type="hidden" />
+
+        <div class="mb-5 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+          <p
+            class="mb-3 text-xs font-medium uppercase tracking-wider text-orange-700"
+            data-i18n="admin.staff.personalSection"
+          >
+            ข้อมูลส่วนตัวพนักงาน
+          </p>
+
+          <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-[135px_minmax(0,1fr)_minmax(0,1fr)]">
+            <label class="block text-sm font-medium text-slate-700">
+              <span data-i18n="common.prefixLabel">คำนำหน้า</span>
+              <select
+                name="prefix"
+                class="select select-bordered mt-1.5 h-[42px] min-h-0 w-full rounded-xl border-slate-300 bg-white text-sm font-normal"
+              >
+                <option value="" data-i18n="common.prefixNone">ไม่ระบุ</option>
+                <option value="นาย" data-i18n="common.prefixMr">นาย</option>
+                <option value="นาง" data-i18n="common.prefixMrs">นาง</option>
+                <option value="นางสาว" data-i18n="common.prefixMiss">นางสาว</option>
+              </select>
+            </label>
+
+            <label class="block text-sm font-medium text-slate-700">
+              <span>
+                <span data-i18n="admin.staff.firstName">ชื่อจริง</span>
+                <span class="text-red-500">*</span>
+              </span>
+              <input
+                name="firstName"
+                required
+                maxlength="80"
+                autocomplete="off"
+                class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal"
+                placeholder="เช่น กิตติพงศ์"
+                data-i18n-placeholder="admin.staff.firstNamePlaceholder"
+              />
+            </label>
+
+            <label class="block text-sm font-medium text-slate-700">
+              <span>
+                <span data-i18n="admin.staff.lastName">นามสกุล</span>
+                <span class="text-red-500">*</span>
+              </span>
+              <input
+                name="lastName"
+                required
+                maxlength="80"
+                autocomplete="off"
+                class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal"
+                placeholder="เช่น สุขสวัสดิ์"
+                data-i18n-placeholder="admin.staff.lastNamePlaceholder"
+              />
+            </label>
+          </div>
+
+          <div class="mt-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+            <label class="block text-sm font-medium text-slate-700">
+              <span data-i18n="common.nicknameLabel">ชื่อเล่น</span>
+              <input
+                name="nickname"
+                maxlength="60"
+                autocomplete="off"
+                class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal"
+                placeholder="เช่น บอล, เมย์"
+                data-i18n-placeholder="common.nicknamePlaceholder"
+              />
+            </label>
+
+            <label class="block text-sm font-medium text-slate-700">
+              <span data-i18n="common.ageLabel">อายุ (ปี)</span>
+              <input
+                name="age"
+                type="number"
+                min="15"
+                max="100"
+                step="1"
+                data-no-stepper
+                autocomplete="off"
+                class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal"
+                placeholder="เช่น 24"
+                data-i18n-placeholder="common.agePlaceholder"
+              />
+            </label>
+
+            <label class="block text-sm font-medium text-slate-700">
+              <span data-i18n="admin.staff.phone">เบอร์โทรศัพท์</span>
+              <input
+                name="phone"
+                type="tel"
+                inputmode="tel"
+                maxlength="20"
+                autocomplete="off"
+                class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal"
+                placeholder="0812345678"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div class="mb-5 rounded-xl border border-slate-200 bg-white p-4">
+          <p
+            class="mb-3 text-xs font-medium uppercase tracking-wider text-slate-600"
+            data-i18n="admin.staff.accountSection"
+          >
+            ข้อมูลการเข้าสู่ระบบและตำแหน่งหน้าที่
+          </p>
+
+          <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+            <label class="block text-sm font-medium text-slate-700">
+              <span>
+                <span data-i18n="admin.staff.loginUsername">ชื่อผู้ใช้ในการเข้าสู่ระบบ</span>
+                <span class="text-red-500">*</span>
+              </span>
+              <input
+                name="username"
+                autocomplete="off"
+                required
+                class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal read-only:bg-slate-100 read-only:text-slate-500"
+                placeholder="เช่น waiter01"
+                data-i18n-placeholder="admin.staff.usernamePlaceholder"
+              />
+            </label>
+
+            <label class="block text-sm font-medium text-slate-700">
+              <span data-i18n="admin.staff.loginPassword">รหัสผ่านในการเข้าสู่ระบบ</span>
+              <input
+                name="password"
+                type="password"
+                minlength="8"
+                autocomplete="new-password"
+                class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal"
+              />
+              <small
+                id="password-hint"
+                class="mt-1 block text-xs font-normal text-slate-500"
+                data-i18n="admin.staff.passwordMin"
+              >
+                ต้องมีอย่างน้อย 8 ตัวอักษร
+              </small>
+            </label>
+          </div>
+
+          <label class="mt-3.5 block text-sm font-medium text-slate-700">
+            <span>
+              <span data-i18n="admin.staff.roleOrPosition">บทบาท / ตำแหน่ง</span>
+              <span class="text-red-500">*</span>
+            </span>
+            <select
+              name="role"
+              required
+              class="select select-bordered mt-1.5 h-[42px] min-h-0 w-full rounded-xl border-slate-300 bg-white text-sm font-normal"
+            >
+              <option value="waiter" data-i18n="staff.role.waiterShort">พนักงานเสิร์ฟ</option>
+              <option value="kitchen" data-i18n="staff.role.kitchenShort">ครัว</option>
+              <option value="manager" data-i18n="staff.role.managerShort">ผู้จัดการ</option>
+              <option value="admin" data-i18n="staff.role.adminShort">แอดมิน</option>
+            </select>
+          </label>
+
+          <label
+            id="staff-status-wrap"
+            class="mt-4 hidden items-center gap-2.5 text-sm font-medium text-slate-700"
+          >
+            <input
+              name="isActive"
+              type="checkbox"
+              checked
+              class="checkbox checkbox-sm checkbox-primary"
+            />
+            <span data-i18n="admin.staff.activeAccountToggle"
+              >เปิดให้บัญชีนี้เข้าสู่ระบบใช้งานได้</span
+            >
+          </label>
+        </div>
+
+        <button
+          type="submit"
+          data-no-btn
+          class="h-11 w-full rounded-xl bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700"
+          data-i18n="admin.staff.save"
+        >
+          บันทึกพนักงาน
+        </button>
+      </form>
+    </div>
+
+    <script src="/js/staff-auth.js"></script>
+    <script src="/js/admin/common.js"></script>
+    <script src="/js/admin/manageStaff.js"></script>
+    <div
+      id="langSwitcher"
+      data-lang-switcher
+      data-i18n-skip
+      class="lang-switcher lang-switcher-floating"
+      role="group"
+      data-i18n-aria-label="language.switchAria"
+      aria-label="เปลี่ยนภาษา"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        class="lang-switcher__icon"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+      </svg>
+      <button
+        type="button"
+        data-no-btn
+        data-lang="th"
+        class="lang-switcher__btn"
+        aria-pressed="true"
+      >
+        ไทย
+      </button>
+      <button
+        type="button"
+        data-no-btn
+        data-lang="en"
+        class="lang-switcher__btn"
+        aria-pressed="false"
+      >
+        EN
+      </button>
+    </div>
+    <script src="/js/i18n.js"></script>
+    <script src="/js/brand.js"></script>
+  </body>
+</html>

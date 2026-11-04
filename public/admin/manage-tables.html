@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="th" data-theme="buffet">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title data-i18n="page.adminTablesTitle">จัดการโต๊ะ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="icon" type="image/png" href="/api/settings/favicon?v=1" />
+  </head>
+  <body class="min-h-screen bg-slate-100 text-slate-800">
+    <div class="min-h-screen lg:flex">
+      <aside id="admin-sidebar"></aside>
+      <main class="min-w-0 flex-1 px-4 pt-20 pb-6 sm:px-7 lg:px-9">
+        <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p
+              class="text-xs font-medium uppercase tracking-widest text-orange-600"
+              data-i18n="admin.operations"
+            >
+              การดำเนินงาน
+            </p>
+            <h1
+              class="mt-1 text-2xl font-bold text-slate-900 sm:text-3xl"
+              data-i18n="admin.tables.title"
+            >
+              จัดการโต๊ะ
+            </h1>
+          </div>
+          <button
+            id="add-table-button"
+            type="button"
+            data-no-btn
+            class="inline-flex h-10 items-center justify-center rounded-xl bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700"
+            data-i18n="admin.tables.addTable"
+          >
+            เพิ่มโต๊ะ
+          </button>
+        </header>
+
+        <p
+          id="page-message"
+          class="mb-4 hidden rounded-xl p-3.5 text-sm font-normal"
+          role="status"
+        ></p>
+
+        <div
+          id="tables-loading"
+          class="flex min-h-24 items-center justify-center gap-3 text-sm font-normal text-slate-500"
+          role="status"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            class="h-5 w-5 animate-spin text-orange-600"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+              class="opacity-20"
+              stroke="currentColor"
+              stroke-width="3"
+            ></circle>
+            <path
+              d="M21 12a9 9 0 0 0-9-9"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-linecap="round"
+            ></path>
+          </svg>
+          <span>กำลังโหลดโต๊ะ...</span>
+        </div>
+
+        <div id="table-zones" class="space-y-6"></div>
+      </main>
+    </div>
+
+    <div
+      id="table-modal"
+      class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[1px]"
+      role="dialog"
+      aria-modal="true"
+    >
+      <section
+        class="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xl sm:p-6"
+      >
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex min-w-0 items-center gap-2.5">
+            <h2
+              id="table-modal-title"
+              class="truncate text-xl font-semibold text-slate-900"
+              data-i18n-skip
+            >
+              รายละเอียดโต๊ะ
+            </h2>
+            <span
+              id="table-modal-status-badge"
+              class="hidden shrink-0 rounded-lg px-2.5 py-0.5 text-xs font-medium"
+            ></span>
+          </div>
+          <button
+            data-close-modal
+            data-no-btn
+            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-slate-900"
+            type="button"
+            data-i18n-aria-label="common.close"
+            aria-label="ปิด"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div
+          id="table-details"
+          class="my-4 divide-y divide-slate-200/70 overflow-hidden rounded-xl border border-slate-200/90 bg-slate-50/70 text-sm"
+        ></div>
+
+        <p
+          class="rounded-xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 text-xs font-normal leading-relaxed text-slate-500"
+          data-i18n="admin.tables.statusDesc"
+        >
+          สถานะโต๊ะเปลี่ยนตามขั้นตอนคิว การชำระเงิน และการทำความสะอาด
+        </p>
+
+        <div class="mt-4 space-y-2">
+          <button
+            id="open-walkin-btn"
+            data-no-btn
+            class="hidden h-10 w-full rounded-xl bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700"
+            type="button"
+            data-i18n="admin.tables.openWalkin"
+          >
+            เปิดโต๊ะหน้าร้าน (Walk-in)
+          </button>
+          <button
+            id="print-order-qr-btn"
+            data-no-btn
+            class="hidden h-10 w-full rounded-xl bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700"
+            type="button"
+            data-i18n="admin.tables.printOrderQr"
+          >
+            พิมพ์ใบ QR สั่งอาหาร
+          </button>
+          <button
+            id="clear-table"
+            data-no-btn
+            class="hidden h-10 w-full rounded-xl bg-slate-800 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-900"
+            type="button"
+            data-i18n="admin.tables.clearDone"
+          >
+            ทำความสะอาดเสร็จแล้ว
+          </button>
+          <div id="table-secondary-actions" class="flex gap-2">
+            <button
+              id="edit-table"
+              data-no-btn
+              class="hidden h-10 flex-1 whitespace-nowrap rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              type="button"
+              data-i18n="admin.tables.editRename"
+            >
+              แก้ไข / เปลี่ยนชื่อ
+            </button>
+            <button
+              id="delete-table"
+              data-no-btn
+              class="hidden h-10 flex-1 whitespace-nowrap rounded-xl border border-red-200 bg-red-50 px-3.5 text-sm font-medium text-red-700 transition hover:bg-red-100"
+              type="button"
+              data-i18n="admin.tables.deleteTable"
+            >
+              ลบโต๊ะ
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div
+      id="add-table-modal"
+      class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[1px]"
+      role="dialog"
+      aria-modal="true"
+    >
+      <form
+        id="add-table-form"
+        class="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xl sm:p-6"
+      >
+        <input type="hidden" name="tableId" />
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <h2
+            id="add-table-modal-title"
+            class="text-xl font-semibold text-slate-900"
+            data-i18n-skip
+          >
+            เพิ่มโต๊ะใหม่
+          </h2>
+          <button
+            data-close-modal
+            data-no-btn
+            type="button"
+            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-slate-900"
+            data-i18n-aria-label="common.close"
+            aria-label="ปิด"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <label class="mb-1 block text-sm font-medium text-slate-700">
+          <span data-i18n="admin.tables.tableNumber">หมายเลข / ชื่อโต๊ะ</span>
+          <input
+            name="tableNumber"
+            required
+            maxlength="40"
+            class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal text-slate-800"
+          />
+        </label>
+        <p
+          id="table-number-error"
+          class="mb-3 hidden text-xs font-medium text-red-700"
+          role="alert"
+        ></p>
+
+        <label class="mt-3 mb-3 block text-sm font-medium text-slate-700">
+          <span data-i18n="admin.tables.zoneType">ประเภทโต๊ะ</span>
+          <select
+            id="table-zone-select"
+            name="zone"
+            class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal text-slate-800"
+          >
+            <option value="small" data-i18n="admin.tables.zone.small">โต๊ะเล็ก (1-2 คน)</option>
+            <option value="medium" data-i18n="admin.tables.zone.medium">โต๊ะกลาง (3-6 คน)</option>
+            <option value="large" data-i18n="admin.tables.zone.large">โต๊ะใหญ่ (7-12 คน)</option>
+          </select>
+        </label>
+
+        <p id="capacity-hint" class="mb-3 text-xs font-normal text-slate-500"></p>
+
+        <div class="mb-5 grid grid-cols-2 gap-3">
+          <label class="block text-sm font-medium text-slate-700">
+            <span data-i18n="admin.tables.minCapacity">ความจุขั้นต่ำ</span>
+            <input
+              name="minCapacity"
+              type="number"
+              min="1"
+              max="12"
+              step="1"
+              required
+              data-no-stepper
+              class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal text-slate-800"
+            />
+          </label>
+          <label class="block text-sm font-medium text-slate-700">
+            <span data-i18n="admin.tables.maxCapacity">ความจุสูงสุด</span>
+            <input
+              name="capacity"
+              type="number"
+              min="1"
+              max="12"
+              step="1"
+              required
+              data-no-stepper
+              class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal text-slate-800"
+            />
+          </label>
+        </div>
+
+        <button
+          type="submit"
+          data-no-btn
+          class="h-11 w-full rounded-xl bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700"
+          data-i18n="admin.tables.save"
+        >
+          บันทึกโต๊ะ
+        </button>
+      </form>
+    </div>
+
+    <div
+      id="delete-confirm-modal"
+      class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4 backdrop-blur-[1px]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-confirm-title"
+    >
+      <section
+        class="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xl sm:p-6"
+      >
+        <div class="flex items-start gap-3">
+          <span
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-100 text-lg font-semibold text-red-700"
+          >
+            !
+          </span>
+          <div class="min-w-0">
+            <h2 id="delete-confirm-title" class="text-lg font-semibold text-slate-900">
+              ยืนยันการลบโต๊ะ
+            </h2>
+            <p class="mt-1 text-sm font-normal text-slate-600">
+              การลบโต๊ะเป็นการกระทำถาวร ไม่สามารถย้อนกลับได้
+            </p>
+          </div>
+        </div>
+        <div class="mt-4 rounded-xl border border-slate-200/70 bg-slate-50 px-4 py-3 text-sm">
+          <p class="text-xs font-normal text-slate-500">โต๊ะที่จะลบ</p>
+          <p id="delete-confirm-target" class="mt-0.5 text-base font-semibold text-red-700">—</p>
+        </div>
+        <div class="mt-5 flex gap-2">
+          <button
+            id="delete-confirm-cancel"
+            type="button"
+            data-no-btn
+            class="h-10 flex-1 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            ยกเลิก
+          </button>
+          <button
+            id="delete-confirm-ok"
+            type="button"
+            data-no-btn
+            class="h-10 flex-1 rounded-xl bg-red-700 px-4 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-50"
+          >
+            ยืนยันลบ
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div
+      id="walkin-modal"
+      class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4 backdrop-blur-[1px]"
+      role="dialog"
+      aria-modal="true"
+    >
+      <form
+        id="walkin-form"
+        class="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xl sm:p-6"
+      >
+        <input type="hidden" name="tableId" />
+        <div class="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2
+              id="walkin-modal-title"
+              class="text-lg font-semibold text-slate-900 sm:text-xl"
+              data-i18n="admin.tables.walkinTitle"
+            >
+              เปิดโต๊ะหน้าร้าน (Walk-in)
+            </h2>
+            <p id="walkin-modal-subtitle" class="mt-0.5 text-xs font-normal text-slate-500"></p>
+          </div>
+          <button
+            data-close-walkin
+            data-no-btn
+            type="button"
+            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-slate-900"
+            data-i18n-aria-label="common.close"
+            aria-label="ปิด"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="mb-4">
+          <label
+            for="walkin-customer-count"
+            class="mb-1.5 block text-sm font-medium text-slate-700"
+            data-i18n="queue.partySize"
+            >จำนวนคน</label
+          >
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              data-no-btn
+              data-walkin-step="-1"
+              class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:border-orange-400 hover:bg-orange-50 hover:text-orange-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="ลดจำนวนคน"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                class="pointer-events-none h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <path d="M4.5 10h11" />
+              </svg>
+            </button>
+            <input
+              id="walkin-customer-count"
+              name="customerCount"
+              type="number"
+              min="1"
+              max="12"
+              value="2"
+              required
+              data-no-stepper
+              data-no-daisy-input
+              class="h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-center text-base font-semibold tabular-nums text-slate-900"
+            />
+            <button
+              type="button"
+              data-no-btn
+              data-walkin-step="1"
+              class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:border-orange-400 hover:bg-orange-50 hover:text-orange-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="เพิ่มจำนวนคน"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                class="pointer-events-none h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <path d="M10 4.5v11M4.5 10h11" />
+              </svg>
+            </button>
+          </div>
+          <p
+            class="mt-1.5 text-xs font-normal text-slate-500"
+            data-i18n="admin.tables.walkinLockedCountHint"
+          >
+            หมายเหตุ: จำนวนลูกค้าจะถูกล็อกตามที่เปิดโต๊ะ ไม่สามารถแก้ไขกลางมื้อได้
+          </p>
+        </div>
+
+        <div class="mb-4 rounded-xl border border-slate-200/90 bg-slate-50/70 p-3.5">
+          <p class="mb-2 text-sm font-medium text-slate-700" data-i18n="dining.sectionTitle">
+            เลือกรูปแบบการทาน
+          </p>
+          <div class="grid grid-cols-2 gap-2">
+            <label
+              data-walkin-style="buffet"
+              class="cursor-pointer select-none rounded-xl border-2 border-orange-500 bg-orange-50 px-3 py-2.5 text-center text-sm font-medium text-orange-900 shadow-sm transition hover:border-orange-400"
+            >
+              <input type="radio" name="diningStyle" value="buffet" class="sr-only" checked />
+              <span data-i18n="dining.buffet">บุฟเฟต์ (Buffet)</span>
+            </label>
+            <label
+              data-walkin-style="alacarte"
+              class="cursor-pointer select-none rounded-xl border-2 border-slate-200 bg-white px-3 py-2.5 text-center text-sm font-normal text-slate-600 transition hover:border-orange-300"
+            >
+              <input type="radio" name="diningStyle" value="alacarte" class="sr-only" />
+              <span data-i18n="dining.alacarte">อะลาคาร์ท (สั่งตามเมนู)</span>
+            </label>
+          </div>
+
+          <div id="walkin-package-picker" class="mt-2.5 grid grid-cols-3 gap-2">
+            <label
+              data-walkin-tier="SIGNATURE"
+              class="cursor-pointer select-none rounded-xl border-2 border-orange-500 bg-orange-50 p-2.5 text-center shadow-sm transition hover:border-orange-400"
+            >
+              <input
+                type="radio"
+                name="buffetPackageCode"
+                value="SIGNATURE"
+                class="sr-only"
+                checked
+              />
+              <span data-walkin-tier-name class="block text-xs font-medium text-orange-800"
+                >Signature</span
+              >
+              <span
+                data-walkin-price="SIGNATURE"
+                class="mt-0.5 block text-base font-semibold text-orange-700 tabular-nums"
+                >฿499</span
+              >
+            </label>
+            <label
+              data-walkin-tier="PREMIUM"
+              class="cursor-pointer select-none rounded-xl border-2 border-slate-200 bg-white p-2.5 text-center transition hover:border-orange-300"
+            >
+              <input type="radio" name="buffetPackageCode" value="PREMIUM" class="sr-only" />
+              <span data-walkin-tier-name class="block text-xs font-normal text-slate-500"
+                >Premium</span
+              >
+              <span
+                data-walkin-price="PREMIUM"
+                class="mt-0.5 block text-base font-medium text-slate-800 tabular-nums"
+                >฿599</span
+              >
+            </label>
+            <label
+              data-walkin-tier="DELUXE"
+              class="cursor-pointer select-none rounded-xl border-2 border-slate-200 bg-white p-2.5 text-center transition hover:border-orange-300"
+            >
+              <input type="radio" name="buffetPackageCode" value="DELUXE" class="sr-only" />
+              <span data-walkin-tier-name class="block text-xs font-normal text-slate-500"
+                >Deluxe</span
+              >
+              <span
+                data-walkin-price="DELUXE"
+                class="mt-0.5 block text-base font-medium text-slate-800 tabular-nums"
+                >฿699</span
+              >
+            </label>
+          </div>
+
+          <label
+            id="walkin-refill-card"
+            class="mt-2.5 flex cursor-pointer select-none items-center justify-between gap-2 rounded-xl border-2 border-slate-200 bg-white px-3 py-2.5 transition hover:border-orange-300"
+          >
+            <span class="flex items-center gap-2.5 text-sm font-normal text-slate-700">
+              <input
+                id="walkin-refill-check"
+                type="checkbox"
+                name="hasRefillDrink"
+                value="1"
+                class="h-4 w-4 rounded border-slate-300 text-orange-600 focus:ring-orange-500"
+              />
+              <span data-i18n="dining.refillLabel">รับน้ำรีฟิล (Refill Drink)</span>
+            </span>
+            <span
+              id="walkin-refill-badge"
+              class="shrink-0 rounded-lg bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200"
+              >+฿49 / ท่าน</span
+            >
+          </label>
+        </div>
+
+        <div class="mb-5 grid gap-3 sm:grid-cols-2">
+          <label class="block text-xs font-medium text-slate-700">
+            <span data-i18n="queue.name">ชื่อลูกค้า</span>
+            <span class="font-normal text-slate-400" data-i18n="queue.optional">(ไม่บังคับ)</span>
+            <input
+              name="customerName"
+              maxlength="80"
+              class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-800"
+            />
+          </label>
+          <label class="block text-xs font-medium text-slate-700">
+            <span data-i18n="queue.phone">เบอร์โทรสมาชิก</span>
+            <span class="font-normal text-slate-400" data-i18n="queue.optional">(ไม่บังคับ)</span>
+            <input
+              name="customerPhone"
+              type="tel"
+              inputmode="tel"
+              maxlength="20"
+              class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-800"
+            />
+          </label>
+        </div>
+
+        <div class="flex gap-2">
+          <button
+            data-close-walkin
+            data-no-btn
+            type="button"
+            class="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            data-i18n="common.cancel"
+          >
+            ยกเลิก
+          </button>
+          <button
+            id="walkin-submit-btn"
+            data-no-btn
+            type="submit"
+            class="h-11 flex-1 rounded-xl bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700 disabled:opacity-50"
+            data-i18n="admin.tables.walkinConfirm"
+          >
+            เปิดโต๊ะและออกใบ QR
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div
+      id="table-qr-slip-modal"
+      class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 p-4 backdrop-blur-[1px]"
+      role="dialog"
+      aria-modal="true"
+    >
+      <section
+        class="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xl"
+      >
+        <div class="mb-3 flex items-center justify-between gap-2">
+          <h3 class="text-lg font-semibold text-slate-900" data-i18n="admin.tables.qrSlipTitle">
+            ใบ QR สั่งอาหารประจำโต๊ะ
+          </h3>
+          <button
+            data-close-qr-slip
+            data-no-btn
+            type="button"
+            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-slate-900"
+            data-i18n-aria-label="common.close"
+            aria-label="ปิด"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div
+          id="table-qr-slip-preview"
+          class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm text-slate-800"
+        ></div>
+        <div class="mt-4 flex gap-2">
+          <button
+            data-close-qr-slip
+            data-no-btn
+            type="button"
+            class="h-10 flex-1 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            data-i18n="common.close"
+          >
+            ปิด
+          </button>
+          <button
+            id="print-qr-slip-58"
+            data-no-btn
+            type="button"
+            class="h-10 flex-1 rounded-xl border border-orange-300 bg-white px-3 text-sm font-medium text-orange-800 transition hover:bg-orange-50"
+            data-i18n="admin.tables.printSlip58mm"
+          >
+            58mm
+          </button>
+          <button
+            id="print-qr-slip-now"
+            data-no-btn
+            type="button"
+            class="h-10 flex-1 rounded-xl bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700"
+            data-i18n="admin.tables.printSlip80mm"
+          >
+            80mm
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div id="table-qr-print-area" class="hidden"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/staff-auth.js"></script>
+    <script src="/js/admin/common.js"></script>
+    <script src="/js/admin/manageTable.js"></script>
+    <div
+      id="langSwitcher"
+      data-lang-switcher
+      data-i18n-skip
+      class="lang-switcher lang-switcher-floating"
+      role="group"
+      data-i18n-aria-label="language.switchAria"
+      aria-label="เปลี่ยนภาษา"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        class="lang-switcher__icon"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+      </svg>
+      <button
+        type="button"
+        data-no-btn
+        data-lang="th"
+        class="lang-switcher__btn"
+        aria-pressed="true"
+      >
+        ไทย
+      </button>
+      <button
+        type="button"
+        data-no-btn
+        data-lang="en"
+        class="lang-switcher__btn"
+        aria-pressed="false"
+      >
+        EN
+      </button>
+    </div>
+    <script src="/js/i18n.js"></script>
+    <script src="/js/brand.js"></script>
+  </body>
+</html>

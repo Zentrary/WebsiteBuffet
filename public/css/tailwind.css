@@ -1,0 +1,397 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --restaurant-ink: #172033;
+  --restaurant-muted: #64748b;
+  --restaurant-canvas: #fff8f0;
+  --restaurant-surface: #fffdf9;
+  --restaurant-border: #eadfce;
+  --restaurant-brand: #c2410c;
+  --restaurant-brand-hover: #9a3412;
+  --restaurant-font-sans:
+    'Prompt', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+html {
+  background: var(--restaurant-canvas);
+  font-family: var(--restaurant-font-sans);
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--restaurant-canvas) !important;
+  color: var(--restaurant-ink);
+  font-family: var(--restaurant-font-sans);
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: var(--restaurant-font-sans);
+}
+.prompt-thin {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 100;
+  font-style: normal;
+}
+.prompt-extralight {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 200;
+  font-style: normal;
+}
+.prompt-light {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 300;
+  font-style: normal;
+}
+.prompt-regular {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+.prompt-medium {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 500;
+  font-style: normal;
+}
+.prompt-semibold {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 600;
+  font-style: normal;
+}
+.prompt-bold {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 700;
+  font-style: normal;
+}
+.prompt-extrabold {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 800;
+  font-style: normal;
+}
+.prompt-black {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 900;
+  font-style: normal;
+}
+.prompt-thin-italic {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 100;
+  font-style: italic;
+}
+.prompt-extralight-italic {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 200;
+  font-style: italic;
+}
+.prompt-light-italic {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 300;
+  font-style: italic;
+}
+.prompt-regular-italic {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 400;
+  font-style: italic;
+}
+.prompt-medium-italic {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 500;
+  font-style: italic;
+}
+.prompt-semibold-italic {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 600;
+  font-style: italic;
+}
+.prompt-bold-italic {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 700;
+  font-style: italic;
+}
+.prompt-extrabold-italic {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 800;
+  font-style: italic;
+}
+.prompt-black-italic {
+  font-family: 'Prompt', sans-serif;
+  font-weight: 900;
+  font-style: italic;
+}
+@media (max-width: 640px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@supports (padding: env(safe-area-inset-left)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+.safe-bottom {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+header.bg-slate-900,
+header.bg-slate-950,
+.bg-slate-900:not(button):not(input):not(select):not(textarea) {
+  color: #f8fafc;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 3px;
+}
+
+:where(input, select, textarea) {
+  font-weight: 400;
+}
+
+input,
+select,
+textarea {
+  border-color: #cbd5e1;
+  background-color: #fffdf9;
+  color: var(--restaurant-ink);
+}
+select.select {
+  padding-inline-end: 2.5rem !important;
+}
+
+:where(.card, .modal-box) {
+  border-color: var(--restaurant-border);
+}
+
+.btn-primary,
+button.bg-orange-600,
+button.bg-orange-700 {
+  color: #fff;
+  background-color: var(--restaurant-brand);
+}
+
+.btn-primary:hover,
+button.bg-orange-600:hover,
+button.bg-orange-700:hover {
+  background-color: var(--restaurant-brand-hover);
+}
+
+button.btn-ghost,
+button.bg-slate-100,
+button.bg-blue-50,
+button.bg-amber-50,
+button.bg-red-50 {
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 2px rgb(23 32 51 / 0.08);
+}
+
+button.bg-blue-50 {
+  border-color: #bfdbfe;
+}
+button.bg-amber-50 {
+  border-color: #fcd34d;
+}
+button.bg-red-50 {
+  border-color: #fecaca;
+}
+
+button.btn-ghost:hover,
+button.bg-slate-100:hover {
+  border-color: #94a3b8;
+  background-color: #f8fafc;
+}
+.lang-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  height: 2.25rem;
+  padding: 0.1875rem;
+  border-radius: 0.625rem;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 4px 14px -3px rgba(15, 23, 42, 0.12),
+    0 1px 3px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  user-select: none;
+}
+
+.lang-switcher-floating {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 100;
+}
+
+.lang-switcher--inline {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.lang-switcher--dark {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(71, 85, 105, 0.85);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.lang-switcher__icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-left: 0.375rem;
+  margin-right: 0.125rem;
+  flex-shrink: 0;
+  color: #64748b;
+  pointer-events: none;
+}
+
+.lang-switcher--dark .lang-switcher__icon {
+  color: #94a3b8;
+}
+
+@media (max-width: 380px) {
+  .lang-switcher--inline .lang-switcher__icon {
+    display: none;
+  }
+}
+
+.lang-switcher__btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.75rem;
+  min-width: 2.35rem;
+  padding: 0 0.625rem;
+  border-radius: 0.45rem;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.lang-switcher__btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.lang-switcher--dark .lang-switcher__btn {
+  color: #cbd5e1;
+}
+
+.lang-switcher--dark .lang-switcher__btn:hover {
+  background: rgba(51, 65, 85, 0.8);
+  color: #ffffff;
+}
+
+.lang-switcher__btn.is-active,
+.lang-switcher__btn[aria-pressed='true'] {
+  background: var(--restaurant-brand) !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(194, 65, 12, 0.35) !important;
+}
+
+.lang-switcher--dark .lang-switcher__btn.is-active,
+.lang-switcher--dark .lang-switcher__btn[aria-pressed='true'] {
+  background: #ea580c !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35) !important;
+}
+
+@media (max-width: 639px) {
+  [role='dialog'] > .modal-box {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    max-height: 100vh;
+    min-height: 100vh;
+    margin: 0;
+    overflow-y: auto;
+    border-radius: 0;
+    transform: none;
+  }
+}
+
+@supports (height: 100dvh) {
+  @media (max-width: 639px) {
+    [role='dialog'] > .modal-box {
+      height: 100dvh;
+      max-height: 100dvh;
+      min-height: 100dvh;
+    }
+  }
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .sticky.top-0 {
+    position: relative;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  body > *:not(#payment-modal) {
+    display: none !important;
+  }
+
+  body.print-ticket > * {
+    display: none !important;
+  }
+  body.print-ticket #ticket-print-area {
+    display: block !important;
+  }
+
+  body.print-entry-qr > * {
+    display: none !important;
+  }
+  body.print-entry-qr #queue-entry-card {
+    display: block !important;
+  }
+}

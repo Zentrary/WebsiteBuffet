@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="th" data-theme="buffet">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title data-i18n="page.adminSettingsTitle">ตั้งค่าร้าน</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="icon" type="image/png" href="/api/settings/favicon?v=1" />
+    <style>
+      .file-upload-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+      }
+      label[for$="FileInput"] svg {
+        width: 14px !important;
+        height: 14px !important;
+        flex-shrink: 0;
+      }
+      .header-icon svg {
+        width: 20px !important;
+        height: 20px !important;
+      }
+      .preview-frame {
+        height: 110px;
+        width: 100%;
+        overflow: hidden;
+      }
+      .preview-frame img {
+        max-height: 100%;
+        max-width: 100%;
+        object-fit: contain;
+        display: block;
+      }
+      .preview-frame.cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-orange-50 text-slate-900">
+    <div class="min-h-screen lg:flex">
+      <aside id="admin-sidebar"></aside>
+      <main class="min-w-0 flex-1 px-4 pt-20 pb-6 sm:px-7 lg:px-9">
+        <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p
+              class="font-bold uppercase tracking-widest text-orange-600"
+              data-i18n="admin.restaurantManagement"
+            >
+              การจัดการร้าน
+            </p>
+            <h1 class="mt-1 text-3xl font-black" data-i18n="admin.settings.title">ตั้งค่าร้าน</h1>
+          </div>
+          <button
+            form="shop-settings-form"
+            class="rounded-xl bg-orange-600 px-5 py-3 font-bold text-white hover:bg-orange-700"
+            data-i18n="admin.settings.save"
+          >
+            บันทึกการตั้งค่า
+          </button>
+        </header>
+        <div
+          class="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+        >
+          <span
+            class="header-icon flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-700"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 10h18M5 10l1-6h12l1 6M5 10v10h14V10M9 20v-6h6v6" />
+            </svg>
+          </span>
+          <div class="min-w-0 flex-1">
+            <p
+              class="text-xs font-bold uppercase tracking-widest text-slate-500"
+              data-i18n="admin.settings.shopStatus"
+            >
+              สถานะร้าน
+            </p>
+
+            <p id="shop-status" class="text-lg font-black leading-tight">กำลังโหลด...</p>
+            <p
+              id="closing-countdown"
+              class="hidden text-xs font-bold text-orange-700"
+              aria-live="polite"
+            ></p>
+          </div>
+          <button
+            id="open-shop-button"
+            type="button"
+            class="hidden rounded-xl bg-green-700 px-4 py-2 text-sm font-bold text-white hover:bg-green-800"
+            data-i18n="admin.settings.openNow"
+          >
+            เปิดร้านตอนนี้
+          </button>
+        </div>
+
+        <section
+          id="db-status-section"
+          class="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+        >
+          <div class="mb-3.5 flex flex-wrap items-center justify-between gap-2">
+            <div class="min-w-0">
+              <h2
+                class="text-base font-black text-slate-900 sm:text-lg"
+                data-i18n="admin.settings.dbSectionTitle"
+              >
+                สถานะการเชื่อมต่อฐานข้อมูล
+              </h2>
+              <p
+                class="mt-0.5 text-xs text-slate-500 sm:text-sm"
+                data-i18n="admin.settings.dbSectionDesc"
+              >
+                ตรวจสอบการเชื่อมต่อระหว่างเว็บไซต์กับฐานข้อมูลหลักแบบเรียลไทม์
+              </p>
+            </div>
+            <div class="flex items-center gap-2.5">
+              <span id="db-checked-at" class="text-xs font-medium text-slate-400"></span>
+              <button
+                id="refresh-db-status"
+                type="button"
+                data-no-btn
+                class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-700 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700"
+              >
+                <svg
+                  id="refresh-db-icon"
+                  viewBox="0 0 24 24"
+                  class="h-3.5 w-3.5 shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                  <path d="M21 3v6h-6" />
+                </svg>
+                <span data-i18n="admin.settings.dbRefresh">ตรวจสอบสถานะ</span>
+              </button>
+            </div>
+          </div>
+
+          <div
+            id="db-mongo-card"
+            class="rounded-xl border border-slate-200 bg-slate-50/70 p-4 transition"
+          >
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="flex min-w-0 items-center gap-3">
+                <span
+                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <ellipse cx="12" cy="5" rx="8" ry="3" />
+                    <path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5" />
+                    <path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" />
+                  </svg>
+                </span>
+                <div class="min-w-0">
+                  <h3
+                    class="text-base font-black leading-tight text-slate-900"
+                    data-i18n="admin.settings.dbMongoTitle"
+                  >
+                    MongoDB
+                  </h3>
+                  <p class="mt-0.5 text-xs text-slate-500" data-i18n="admin.settings.dbMongoRole">
+                    ข้อมูลร้าน คิว โต๊ะ เมนู ออเดอร์ สมาชิก และการชำระเงิน
+                  </p>
+                </div>
+              </div>
+              <span
+                id="db-mongo-badge"
+                class="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-slate-200/80 px-2.5 py-1 text-xs font-bold text-slate-600"
+                role="status"
+                aria-live="polite"
+              >
+                <span id="db-mongo-dot" class="h-2 w-2 rounded-full bg-slate-400"></span>
+                <span id="db-mongo-state" data-i18n="admin.settings.dbChecking"
+                  >กำลังตรวจสอบ...</span
+                >
+              </span>
+            </div>
+            <dl
+              class="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200/80 pt-2.5 text-xs sm:grid-cols-3"
+            >
+              <div>
+                <dt class="text-slate-400" data-i18n="admin.settings.dbLabelDatabase">ฐานข้อมูล</dt>
+                <dd id="db-mongo-name" class="mt-0.5 truncate font-mono font-bold text-slate-700">
+                  —
+                </dd>
+              </div>
+              <div>
+                <dt class="text-slate-400" data-i18n="admin.settings.dbLabelHost">เซิร์ฟเวอร์</dt>
+                <dd
+                  id="db-mongo-host"
+                  class="mt-0.5 truncate font-mono font-semibold text-slate-700"
+                >
+                  —
+                </dd>
+              </div>
+              <div>
+                <dt class="text-slate-400" data-i18n="admin.settings.dbLabelLatency">การตอบสนอง</dt>
+                <dd id="db-mongo-latency" class="mt-0.5 font-mono font-bold text-slate-700">—</dd>
+              </div>
+            </dl>
+            <p
+              id="db-mongo-error"
+              class="mt-2.5 hidden rounded-lg bg-red-100/80 px-2.5 py-1.5 text-xs font-medium text-red-800"
+            ></p>
+          </div>
+
+          <div
+            id="db-sql-card"
+            class="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4 transition"
+          >
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="flex min-w-0 items-center gap-3">
+                <span
+                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                    <line x1="12" y1="2" x2="12" y2="22" />
+                    <line x1="2" y1="12" x2="22" y2="12" />
+                  </svg>
+                </span>
+                <div class="min-w-0">
+                  <h3
+                    class="text-base font-black leading-tight text-slate-900"
+                    data-i18n="admin.settings.dbSqlTitle"
+                  >
+                    PostgreSQL (Supabase)
+                  </h3>
+                  <p class="mt-0.5 text-xs text-slate-500" data-i18n="admin.settings.dbSqlRole">
+                    ข้อมูลการเงิน ออเดอร์ สมาชิก แต้มสะสม และการตั้งค่าร้าน
+                  </p>
+                </div>
+              </div>
+              <span
+                id="db-sql-badge"
+                class="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-slate-200/80 px-2.5 py-1 text-xs font-bold text-slate-600"
+                role="status"
+                aria-live="polite"
+              >
+                <span id="db-sql-dot" class="h-2 w-2 rounded-full bg-slate-400"></span>
+                <span id="db-sql-state" data-i18n="admin.settings.dbChecking"
+                  >กำลังตรวจสอบ...</span
+                >
+              </span>
+            </div>
+            <dl
+              class="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200/80 pt-2.5 text-xs sm:grid-cols-3"
+            >
+              <div>
+                <dt class="text-slate-400" data-i18n="admin.settings.dbLabelDatabase">ฐานข้อมูล</dt>
+                <dd id="db-sql-name" class="mt-0.5 truncate font-mono font-bold text-slate-700">
+                  —
+                </dd>
+              </div>
+              <div>
+                <dt class="text-slate-400" data-i18n="admin.settings.dbLabelHost">เซิร์ฟเวอร์</dt>
+                <dd
+                  id="db-sql-host"
+                  class="mt-0.5 truncate font-mono font-semibold text-slate-700"
+                >
+                  —
+                </dd>
+              </div>
+              <div>
+                <dt class="text-slate-400" data-i18n="admin.settings.dbLabelLatency">การตอบสนอง</dt>
+                <dd id="db-sql-latency" class="mt-0.5 font-mono font-bold text-slate-700">—</dd>
+              </div>
+            </dl>
+            <p
+              id="db-sql-error"
+              class="mt-2.5 hidden rounded-lg bg-red-100/80 px-2.5 py-1.5 text-xs font-medium text-red-800"
+            ></p>
+          </div>
+
+          <section
+            id="db-parity-card"
+            class="mt-4 rounded-xl border border-slate-200 bg-white p-4"
+          >
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 class="text-sm font-black text-slate-900" data-i18n="admin.settings.parityTitle">
+                  ตารางเทียบ 15 ชุดข้อมูล
+                </h3>
+                <p class="mt-0.5 text-xs text-slate-500" data-i18n="admin.settings.parityDesc">
+                  MongoDB Atlas กับ Supabase PostgreSQL ต้องตรงกันทุกแถว
+                </p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span
+                  id="db-parity-badge"
+                  class="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600"
+                >
+                  —
+                </span>
+                <button
+                  id="sync-mirror-now"
+                  type="button"
+                  data-no-btn
+                  class="inline-flex h-8 items-center rounded-lg bg-slate-900 px-3 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-60"
+                  data-i18n="admin.settings.paritySync"
+                >
+                  ตรวจสอบและซิงก์ทันที
+                </button>
+              </div>
+            </div>
+            <p id="db-parity-error" class="mb-2 hidden text-xs font-medium text-red-700"></p>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-left text-xs">
+                <thead class="text-slate-400">
+                  <tr>
+                    <th class="py-1.5 pr-3 font-semibold" data-i18n="admin.settings.parityDataset">ชุดข้อมูล</th>
+                    <th class="py-1.5 pr-3 font-semibold">MongoDB</th>
+                    <th class="py-1.5 pr-3 font-semibold">Supabase</th>
+                    <th class="py-1.5 font-semibold" data-i18n="admin.settings.parityStatus">สถานะ</th>
+                  </tr>
+                </thead>
+                <tbody id="db-parity-rows" class="text-slate-700"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <p id="page-message" class="mb-4 hidden rounded-xl p-4" role="status"></p>
+        <form id="shop-settings-form" class="space-y-5">
+          <section class="rounded-2xl bg-white p-5 shadow-sm sm:p-7">
+            <div class="mb-5">
+              <h2 class="text-xl font-black" data-i18n="admin.settings.section1Title">
+                ข้อมูลร้านและหน้าลูกค้า
+              </h2>
+              <p class="mt-1 text-sm text-slate-500" data-i18n="admin.settings.section1Desc">
+                ใช้กับชื่อร้าน ข้อความต้อนรับ และข้อมูลติดต่อบนหน้าลูกค้า
+              </p>
+            </div>
+            <div class="grid gap-4 md:grid-cols-3">
+              <label class="font-semibold">
+                <span data-i18n="admin.settings.restaurantName"> ชื่อร้าน </span>
+                <input
+                  name="restaurantName"
+                  maxlength="120"
+                  class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3"
+                />
+              </label>
+              <label class="font-semibold">
+                <span data-i18n="admin.settings.diningDuration"> เวลารับประทาน (นาที) </span>
+                <input
+                  name="diningDurationMinutes"
+                  type="number"
+                  min="1"
+                  max="1440"
+                  class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3"
+                />
+              </label>
+              <label class="font-semibold">
+                <span data-i18n="admin.settings.phone"> เบอร์โทร </span>
+                <input
+                  name="phone"
+                  maxlength="40"
+                  inputmode="tel"
+                  class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3"
+                />
+              </label>
+              <label class="font-semibold md:col-span-3">
+                <span data-i18n="admin.settings.address"> ที่อยู่ </span>
+                <input
+                  name="address"
+                  maxlength="500"
+                  class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3"
+                />
+              </label>
+              <label class="block font-semibold md:col-span-3">
+                <span data-i18n="admin.settings.welcome"> ข้อความต้อนรับ / ข้อความหน้าแรก </span>
+                <textarea
+                  name="welcomeMessage"
+                  maxlength="500"
+                  rows="2"
+                  class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3"
+                  data-i18n="admin.settings.welcomePlaceholder"
+                  data-i18n-attr="placeholder"
+                  placeholder="ยินดีต้อนรับ..."
+                >
+                </textarea>
+              </label>
+            </div>
+          </section>
+
+          <section class="rounded-2xl bg-white p-5 shadow-sm sm:p-7">
+            <div class="mb-5">
+              <h2 class="text-xl font-black" data-i18n="admin.settings.section2Title">
+                นโยบายราคา (VAT / ค่าบริการ)
+              </h2>
+              <p class="mt-1 text-sm text-slate-500" data-i18n="admin.settings.section2Desc">
+                กำหนดอัตราและโหมดการคิด VAT และค่าบริการที่ใช้กับทุกบิล
+              </p>
+            </div>
+            <div class="grid gap-4 md:grid-cols-4">
+              <label class="font-semibold">
+                <span data-i18n="admin.settings.vatPercent"> VAT (%) </span>
+                <input
+                  name="vatPercent"
+                  type="number"
+                  min="0"
+                  max="30"
+                  step="0.5"
+                  class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3"
+                />
+              </label>
+              <label class="font-semibold">
+                <span data-i18n="admin.settings.vatMode"> โหมด VAT </span>
+                <select
+                  name="vatMode"
+                  class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3"
+                >
+                  <option value="included" data-i18n="admin.settings.vatIncluded">
+                    รวมในราคาเมนู
+                  </option>
+                  <option value="excluded" data-i18n="admin.settings.vatExcluded">
+                    บวกเพิ่มตอนจ่าย
+                  </option>
+                </select>
+              </label>
+              <label class="font-semibold">
+                <span data-i18n="admin.settings.servicePercent"> ค่าบริการ (%) </span>
+                <input
+                  name="serviceChargePercent"
+                  type="number"
+                  min="0"
+                  max="30"
+                  step="0.5"
+                  class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3"
+                />
+              </label>
+              <label class="font-semibold">
+                <span data-i18n="admin.settings.serviceMode"> โหมดค่าบริการ </span>
+                <select
+                  name="serviceChargeMode"
+                  class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3"
+                >
+                  <option value="included" data-i18n="admin.settings.serviceIncluded">
+                    รวมในราคาเมนู
+                  </option>
+                  <option value="excluded" data-i18n="admin.settings.serviceExcluded">
+                    บวกเพิ่มตอนจ่าย
+                  </option>
+                </select>
+              </label>
+            </div>
+            <div
+              id="billing-preview"
+              class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm"
+            >
+              <p class="font-bold text-slate-700" data-i18n="admin.settings.previewTitle">
+                ตัวอย่างการคำนวณ (สมมติยอดอาหาร ฿100)
+              </p>
+              <div id="billing-preview-body" class="mt-3 space-y-1 text-slate-600"></div>
+            </div>
+
+            <div class="mt-6 border-t border-slate-100 pt-5">
+              <h3
+                class="text-base font-black text-slate-900"
+                data-i18n="admin.settings.buffetSectionTitle"
+              >
+                ราคาแพ็กเกจบุฟเฟต์และน้ำรีฟิล (ต่อท่าน)
+              </h3>
+              <p class="mt-0.5 text-xs text-slate-500" data-i18n="admin.settings.buffetSectionDesc">
+                กำหนดราคาต่อท่านสำหรับโหมดบุฟเฟต์ทั้ง 3 แพ็กเกจ และค่าน้ำรีฟิล
+                (โหมดอะลาคาร์ทคิดตามราคาจานที่สั่ง)
+              </p>
+              <div class="mt-4 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                <label class="font-semibold">
+                  <span class="text-sm text-slate-700" data-i18n="admin.settings.buffetSignature"
+                    >Signature (฿/ท่าน)</span
+                  >
+                  <input
+                    name="buffetSignaturePrice"
+                    type="number"
+                    min="0"
+                    max="99999"
+                    step="1"
+                    value="499"
+                    class="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5"
+                  />
+                </label>
+                <label class="font-semibold">
+                  <span class="text-sm text-slate-700" data-i18n="admin.settings.buffetPremium"
+                    >Premium (฿/ท่าน)</span
+                  >
+                  <input
+                    name="buffetPremiumPrice"
+                    type="number"
+                    min="0"
+                    max="99999"
+                    step="1"
+                    value="599"
+                    class="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5"
+                  />
+                </label>
+                <label class="font-semibold">
+                  <span class="text-sm text-slate-700" data-i18n="admin.settings.buffetDeluxe"
+                    >Deluxe (฿/ท่าน)</span
+                  >
+                  <input
+                    name="buffetDeluxePrice"
+                    type="number"
+                    min="0"
+                    max="99999"
+                    step="1"
+                    value="699"
+                    class="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5"
+                  />
+                </label>
+                <label class="font-semibold">
+                  <span class="text-sm text-emerald-800" data-i18n="admin.settings.refillDrinkPrice"
+                    >น้ำรีฟิล (฿/ท่าน)</span
+                  >
+                  <input
+                    name="refillDrinkPrice"
+                    type="number"
+                    min="0"
+                    max="9999"
+                    step="1"
+                    value="49"
+                    class="mt-1.5 w-full rounded-xl border border-emerald-300 bg-emerald-50/40 px-3 py-2.5"
+                  />
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="rounded-2xl bg-white p-5 shadow-sm sm:p-7">
+            <div class="mb-5">
+              <h2 class="text-xl font-black" data-i18n="admin.settings.section3Title">
+                ภาพลักษณ์ร้าน
+              </h2>
+              <p class="mt-1 text-sm text-slate-500" data-i18n="admin.settings.section3Desc">
+                ระบุ URL หรืออัปโหลดไฟล์ใหม่ ตรวจตัวอย่างก่อนบันทึกได้ทันที
+              </p>
+            </div>
+            <div class="grid gap-4 md:grid-cols-3">
+              <div class="flex flex-col rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+                <div
+                  class="preview-frame mb-3 flex items-center justify-center rounded-xl bg-white ring-1 ring-slate-200"
+                >
+                  <img data-preview="logo" src="/assets/images/logo.png" alt="" />
+                </div>
+                <label class="block text-sm font-semibold">
+                  <span data-i18n="admin.settings.logo"> โลโก้ (URL) </span>
+                  <input
+                    name="logoUrl"
+                    class="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                    placeholder="/assets/images/logo.png"
+                  />
+                </label>
+                <input
+                  id="logoFileInput"
+                  name="logoFile"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  class="file-upload-input"
+                />
+                <label
+                  for="logoFileInput"
+                  class="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-orange-100 px-3 py-2 text-xs font-bold text-orange-800 transition hover:bg-orange-200"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                  </svg>
+                  <span data-i18n="admin.settings.chooseImage"> เลือกรูปภาพ </span>
+                </label>
+                <p
+                  data-file-name="logoFileInput"
+                  class="mt-1.5 truncate text-center text-[10px] text-slate-500"
+                ></p>
+              </div>
+
+              <div class="flex flex-col rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+                <div
+                  class="preview-frame cover mb-3 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200"
+                >
+                  <img data-preview="hero" src="/assets/images/default-food.jpg" alt="" />
+                </div>
+                <label class="block text-sm font-semibold">
+                  <span data-i18n="admin.settings.hero"> ภาพส่วนหัว (URL) </span>
+                  <input
+                    name="heroImageUrl"
+                    class="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                    placeholder="https://..."
+                  />
+                </label>
+                <input
+                  id="heroFileInput"
+                  name="heroFile"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  class="file-upload-input"
+                />
+                <label
+                  for="heroFileInput"
+                  class="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-orange-100 px-3 py-2 text-xs font-bold text-orange-800 transition hover:bg-orange-200"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                  </svg>
+                  <span data-i18n="admin.settings.chooseImage"> เลือกรูปภาพ </span>
+                </label>
+                <p
+                  data-file-name="heroFileInput"
+                  class="mt-1.5 truncate text-center text-[10px] text-slate-500"
+                ></p>
+              </div>
+
+              <div class="flex flex-col rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+                <div
+                  class="preview-frame mb-3 flex items-center justify-center rounded-xl bg-white ring-1 ring-slate-200"
+                >
+                  <img data-preview="paymentQr" src="/assets/images/payment/promptpay.png" alt="" />
+                </div>
+                <label class="mb-2.5 block text-sm font-semibold">
+                  <span data-i18n="admin.settings.promptPayId"> เลขพร้อมเพย์รับเงินของร้าน </span>
+                  <input
+                    name="promptPayId"
+                    maxlength="20"
+                    inputmode="numeric"
+                    class="mt-1.5 w-full rounded-lg border border-orange-300 bg-white px-3 py-2 text-xs font-medium"
+                    placeholder="เช่น 0812345678 หรือเลข 13 หลัก"
+                  />
+                  <span
+                    class="mt-1 block text-[11px] font-normal leading-relaxed text-slate-500"
+                    data-i18n="admin.settings.promptPayHint"
+                  >
+                    กรอกเบอร์โทรศัพท์ 10 หลัก หรือเลขบัตรประชาชน / เลขผู้เสียภาษี 13 หลัก
+                    ที่ผูกพร้อมเพย์กับบัญชีร้าน (หากเว้นว่าง ระบบจะใช้รูป QR ด้านล่างแทน)
+                  </span>
+                </label>
+                <label class="block text-sm font-semibold">
+                  <span data-i18n="admin.settings.paymentQr"> QR รับเงินสำรอง (URL) </span>
+                  <input
+                    name="paymentQrImageUrl"
+                    class="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                    placeholder="/assets/images/payment/promptpay.png"
+                  />
+                </label>
+                <input
+                  id="paymentQrFileInput"
+                  name="paymentQrFile"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  class="file-upload-input"
+                />
+                <label
+                  for="paymentQrFileInput"
+                  class="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-orange-100 px-3 py-2 text-xs font-bold text-orange-800 transition hover:bg-orange-200"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                  </svg>
+                  <span data-i18n="admin.settings.chooseImage"> เลือกรูปภาพ </span>
+                </label>
+                <p
+                  data-file-name="paymentQrFileInput"
+                  class="mt-1.5 truncate text-center text-[10px] text-slate-500"
+                ></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="rounded-2xl bg-white p-5 shadow-sm sm:p-7">
+            <div class="mb-5">
+              <h2 class="text-xl font-black" data-i18n="admin.settings.section4Title">
+                เวลาให้บริการ
+              </h2>
+              <p class="mt-1 text-sm text-slate-500" data-i18n="admin.settings.section4Desc">
+                รองรับเวลาปิดข้ามวัน เช่น เปิด 10:30 และปิด 03:00
+              </p>
+            </div>
+
+            <div class="space-y-4">
+              <div class="grid gap-4 sm:grid-cols-2">
+                <label class="block font-semibold">
+                  <span data-i18n="admin.settings.openTime"> เวลาเปิด </span>
+                  <input
+                    id="open-time"
+                    name="openTime"
+                    required
+                    type="time"
+                    class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3"
+                  />
+                </label>
+                <label class="block font-semibold">
+                  <span data-i18n="admin.settings.closeTime"> เวลาปิด </span>
+                  <input
+                    id="close-time"
+                    name="closeTime"
+                    required
+                    type="time"
+                    class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3"
+                  />
+                </label>
+                <label class="block font-semibold">
+                  <span data-i18n="admin.settings.lastQueueTime"> ปิดรับคิวเวลา </span>
+                  <input
+                    id="last-queue-time"
+                    name="lastQueueTime"
+                    type="time"
+                    class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3"
+                  />
+                  <span
+                    class="mt-1 block text-xs font-normal text-slate-500"
+                    data-i18n="admin.settings.lastQueueTimeDesc"
+                  >
+                    ลูกค้ารับคิวใหม่ได้ถึงเวลานี้ ส่วนการเรียกคิว ชำระเงิน
+                    และเคลียร์โต๊ะยังทำได้จนถึงเวลาปิดร้าน
+                  </span>
+                </label>
+                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p
+                    class="text-xs font-semibold text-slate-500"
+                    data-i18n="admin.settings.businessDate"
+                  >
+                    วันทำการปัจจุบัน
+                  </p>
+                  <p id="business-date" class="mt-1 text-lg font-black text-slate-800">—</p>
+                  <p
+                    class="mt-1 text-xs text-slate-500"
+                    data-i18n="admin.settings.businessDateDesc"
+                  >
+                    เลขคิวจะเริ่มที่ Q001 ใหม่ทุกวันทำการ (นับจากเวลาเปิดร้านถึงเวลาปิดร้าน)
+                  </p>
+                </div>
+              </div>
+
+              <label
+                class="flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 transition hover:bg-amber-100/50"
+              >
+                <input
+                  id="test-mode"
+                  name="isTestMode"
+                  type="checkbox"
+                  class="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 accent-orange-600"
+                />
+                <span class="block">
+                  <span
+                    class="block text-base font-bold text-amber-900"
+                    data-i18n="admin.settings.testMode"
+                  >
+                    โหมดทดสอบระบบก่อนเปิดร้าน
+                  </span>
+                  <span
+                    class="mt-1 block text-sm text-amber-800/80"
+                    data-i18n="admin.settings.testModeDesc"
+                  >
+                    พนักงานตรวจระบบได้ แต่ลูกค้าจริงจะรับคิวหรือสั่งอาหารไม่ได้
+                  </span>
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <div class="flex justify-end pt-1">
+            <button
+              class="rounded-xl bg-orange-600 px-5 py-3 font-bold text-white hover:bg-orange-700"
+              data-i18n="admin.settings.save"
+            >
+              บันทึกการตั้งค่า
+            </button>
+          </div>
+        </form>
+      </main>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/i18n.js"></script>
+    <script src="/js/staff-auth.js"></script>
+    <script src="/js/admin/common.js"></script>
+    <script src="/js/admin/settings.js"></script>
+    <div
+      id="langSwitcher"
+      data-lang-switcher
+      data-i18n-skip
+      class="lang-switcher lang-switcher-floating"
+      role="group"
+      data-i18n-aria-label="language.switchAria"
+      aria-label="เปลี่ยนภาษา"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        class="lang-switcher__icon"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+      </svg>
+      <button
+        type="button"
+        data-no-btn
+        data-lang="th"
+        class="lang-switcher__btn"
+        aria-pressed="true"
+      >
+        ไทย
+      </button>
+      <button
+        type="button"
+        data-no-btn
+        data-lang="en"
+        class="lang-switcher__btn"
+        aria-pressed="false"
+      >
+        EN
+      </button>
+    </div>
+    <script src="/js/brand.js"></script>
+  </body>
+</html>
