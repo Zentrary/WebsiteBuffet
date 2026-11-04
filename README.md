@@ -156,4 +156,3 @@
 <div align="center">
   <p><strong>Make by Zentrary</strong></p>
 </div>
-"# WebsiteBuffet" 
